@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "gpio.hpp"
+        "usart.hpp"
+        "spi.hpp"
+    INCLUDE_DIRS
+        "."
+    REQUIRES 
+        driver
+)

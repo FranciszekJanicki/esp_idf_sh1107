@@ -201,6 +201,7 @@ namespace Utility {
     void SPIDevice::write_bytes(std::uint8_t const reg_address,
                                 std::array<std::uint8_t, SIZE> const& bytes) const noexcept
     {
+        std::array<std::uint8_t, SIZE> write{bytes};
         if (this->initialized_) {
             spi_transaction_t transaction{};
             transaction.length = 8 * SIZE;
