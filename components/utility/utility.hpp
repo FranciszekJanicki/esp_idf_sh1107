@@ -372,6 +372,82 @@ namespace Utility {
                to_min;
     }
 
+    template <std::unsigned_integral UInt>
+    inline UInt reflection(UInt const data) noexcept
+    {
+        UInt reflection{};
+        for (std::uint8_t i{}; i < std::bit_width(data); ++i) {
+            write_bit(reflection, read_bit(data, i), std::bit_width(data) - 1U - i);
+        }
+        return reflection;
+    }
+
+    template <std::unsigned_integral UInt, std::size_t SIZE>
+    inline UInt calculate_crc(std::array<std::uint8_t, SIZE> const& data,
+                              UInt const init,
+                              UInt const polynomial,
+                              UInt const xor_out,
+                              bool const reflect_in,
+                              bool const reflect_out) noexcept
+    {
+        UInt crc{init};
+        UInt msb_mask{1U << (std::bit_width(crc) - 1U)};
+        UInt crc_mask{(1U << std::bit_width(crc)) - 1U};
+
+        for (std::uint8_t byte : data) {
+            if (reflect_in) {
+                byte = reflection(byte);
+            }
+            crc ^= byte << (std::bit_width(crc) - 8U);
+
+            for (std::uint8_t bit{}; bit < 8U; ++bit) {
+                if (crc & msb_mask) {
+                    crc = (crc << 1U) ^ polynomial;
+                } else {
+                    crc <<= 1U;
+                }
+            }
+        }
+
+        if (reflect_out) {
+            crc = reflect(crc);
+        }
+        crc ^= xor_out;
+        return crc & crc_mask;
+    }
+
+    inline std::uint32_t count_to_freq_hz(std::uint32_t const count,
+                                          std::uint32_t const prescaler,
+                                          std::uint32_t const clock_frequency,
+                                          std::uint32_t const clock_divider = 0UL) noexcept
+    {
+        return clock_frequency / (count + 1UL) / (prescaler + 1UL) / (clock_divider + 1UL);
+    }
+
+    inline std::uint32_t count_to_time_ms(std::uint32_t const count,
+                                          std::uint32_t const prescaler,
+                                          std::uint32_t const clock_frequency,
+                                          std::uint32_t const clock_divider = 0UL) noexcept
+    {
+        return 1000UL / count_to_freq_hz(count, prescaler, clock_frequency, clock_divider);
+    }
+
+    inline std::uint32_t freq_hz_to_count(std::uint32_t const frequency_hz,
+                                          std::uint32_t const prescaler,
+                                          std::uint32_t const clock_frequency_hz,
+                                          std::uint32_t const clock_divider = 0UL) noexcept
+    {
+        return clock_frequency_hz / (prescaler + 1UL) / (clock_divider + 1UL) / frequency_hz - 1UL;
+    }
+
+    inline std::uint32_t time_ms_to_count(std::uint32_t const time_ms,
+                                          std::uint32_t const prescaler,
+                                          std::uint32_t const clock_frequency_hz,
+                                          std::uint32_t const clock_divider = 0UL) noexcept
+    {
+        return freq_hz_to_count(1000UL / time_ms, prescaler, clock_frequency_hz, clock_divider);
+    }
+
 }; // namespace Utility
 
 #endif // UTILITY_HPP

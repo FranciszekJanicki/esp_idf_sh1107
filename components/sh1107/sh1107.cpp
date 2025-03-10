@@ -1,4 +1,5 @@
 #include "sh1107.hpp"
+#include "utility.hpp"
 
 namespace SH1107 {
 
@@ -16,9 +17,37 @@ namespace SH1107 {
         this->deinitialize();
     }
 
-    void SH1107::transmit_byte(ControlPad const control_pad, std::uint8_t const byte) const noexcept
+    void SH1107::display(std::uint8_t const* const byte_image, std::size_t const bytes) const noexcept
     {
-        this->select_control_pad(control_pad);
+        std::uint8_t const width = (SCREEN_WIDTH % 8 == 0) ? (SCREEN_WIDTH / 8) : (SCREEN_WIDTH / 8 + 1);
+        std::uint8_t const height = SCREEN_HEIGHT;
+
+        std::uint8_t column = 0U;
+        std::uint8_t temp = 0U;
+
+        this->transmit_data(0xb0);
+        for (std::uint8_t j = 0U; j < height; j++) {
+            // column = 63 - j;
+            column = j;
+            this->transmit_command(0x00 + (column & 0x0f));
+            this->transmit_command(0x10 + (column >> 4));
+            for (std::uint8_t i = 0U; i < width; i++) {
+                temp = (byte_image[i + j * (width)]);
+                temp = Utility::reflection(temp);
+                this->transmit_data(temp);
+            }
+        }
+    }
+
+    void SH1107::transmit_data(std::uint8_t const byte) const noexcept
+    {
+        this->select_control_pad(ControlPad::DISPLAY_DATA);
+        this->spi_device_.transmit_byte(byte);
+    }
+
+    void SH1107::transmit_command(std::uint8_t const byte) const noexcept
+    {
+        this->select_control_pad(ControlPad::COMMAND_DATA);
         this->spi_device_.transmit_byte(byte);
     }
 
@@ -83,77 +112,77 @@ namespace SH1107 {
 
     void SH1107::send_lower_column_address_command(LOWER_COLUMN_ADDRESS const lower_column_address) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(lower_column_address));
+        this->transmit_command(std::bit_cast<std::uint8_t>(lower_column_address));
     }
 
     void SH1107::send_higher_column_address_command(HIGHER_COLUMN_ADDRESS const higher_column_address) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(higher_column_address));
+        this->transmit_command(std::bit_cast<std::uint8_t>(higher_column_address));
     }
 
     void SH1107::send_memory_addressing_mode_command(MEMORY_ADDRESSING_MODE const memory_addressing_mode) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(memory_addressing_mode));
+        this->transmit_command(std::bit_cast<std::uint8_t>(memory_addressing_mode));
     }
 
     void SH1107::send_segment_remap_command(SEGMENT_REMAP const segment_remap) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(segment_remap));
+        this->transmit_command(std::bit_cast<std::uint8_t>(segment_remap));
     }
 
     void SH1107::send_entire_display_on_off_command(ENTIRE_DISPLAY_ON_OFF const entire_display_on_off) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(entire_display_on_off));
+        this->transmit_command(std::bit_cast<std::uint8_t>(entire_display_on_off));
     }
 
     void SH1107::send_normal_reverse_display_command(NORMAL_REVERSE_DISPLAY const normal_reverse_display) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(normal_reverse_display));
+        this->transmit_command(std::bit_cast<std::uint8_t>(normal_reverse_display));
     }
 
     void SH1107::send_display_on_off_command(DISPLAY_ON_OFF const display_on_off) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(display_on_off));
+        this->transmit_command(std::bit_cast<std::uint8_t>(display_on_off));
     }
 
     void SH1107::send_page_address_command(PAGE_ADDRESS const page_address) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(page_address));
+        this->transmit_command(std::bit_cast<std::uint8_t>(page_address));
     }
 
     void SH1107::send_output_scan_direction_command(OUTPUT_SCAN_DIRECTION const output_scan_direction) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(output_scan_direction));
+        this->transmit_command(std::bit_cast<std::uint8_t>(output_scan_direction));
     }
 
     void SH1107::send_read_modify_write_command(READ_MODIFY_WRITE const read_modify_write) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(read_modify_write));
+        this->transmit_command(std::bit_cast<std::uint8_t>(read_modify_write));
     }
 
     void SH1107::send_end_command(END const end) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(end));
+        this->transmit_command(std::bit_cast<std::uint8_t>(end));
     }
 
     void SH1107::send_nop_command(NOP const nop) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(nop));
+        this->transmit_command(std::bit_cast<std::uint8_t>(nop));
     }
 
     void SH1107::send_write_display_data_command(WRITE_DISPLAY_DATA const write_display_data) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(write_display_data));
+        this->transmit_command(std::bit_cast<std::uint8_t>(write_display_data));
     }
 
     void SH1107::send_read_id_command(READ_ID const read_id) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(read_id));
+        this->transmit_command(std::bit_cast<std::uint8_t>(read_id));
     }
 
     void SH1107::send_read_display_data_command(READ_DISPLAY_DATA const read_display_data) const noexcept
     {
-        this->transmit_byte(ControlPad::COMMAND_DATA, std::bit_cast<std::uint8_t>(read_display_data));
+        this->transmit_command(std::bit_cast<std::uint8_t>(read_display_data));
     }
 
     void SH1107::set_contrast_control_register(CONTRAST_CONTROL const contrast_control) const noexcept

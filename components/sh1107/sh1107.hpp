@@ -26,16 +26,14 @@ namespace SH1107 {
 
         ~SH1107() noexcept;
 
-    private:
-        void transmit_byte(ControlPad const control_pad, std::uint8_t const byte) const noexcept;
+        void display(std::uint8_t const* const byte_image, std::size_t const bytes) const noexcept;
 
-        template <std::size_t SIZE>
-        void transmit_bytes(ControlPad const control_pad, std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
+    private:
+        void transmit_data(std::uint8_t const byte) const noexcept;
+
+        void transmit_command(std::uint8_t const byte) const noexcept;
 
         void write_byte(std::uint8_t const reg_address, std::uint8_t const byte) const noexcept;
-
-        template <std::size_t SIZE>
-        void write_bytes(std::uint8_t const reg_address, std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
 
         void initialize(Config const& config) noexcept;
         void deinitialize() noexcept;
@@ -80,23 +78,6 @@ namespace SH1107 {
 
         SPIDevice spi_device_{};
     };
-
-    template <std::size_t SIZE>
-    inline void SH1107::transmit_bytes(ControlPad const control_pad,
-                                       std::array<std::uint8_t, SIZE> const& bytes) const noexcept
-    {
-        this->select_control_pad(control_pad);
-        this->spi_device_.transmit_bytes(bytes);
-    }
-
-    template <std::size_t SIZE>
-    inline void SH1107::write_bytes(std::uint8_t const reg_address,
-                                    std::array<std::uint8_t, SIZE> const& bytes) const noexcept
-    {
-        this->select_control_pad(ControlPad::COMMAND_DATA);
-        this->spi_device_.transmit_byte(reg_address);
-        this->spi_device_.transmit_bytes(bytes);
-    }
 
 }; // namespace SH1107
 

@@ -50,6 +50,9 @@ namespace SH1107 {
         DC_DC_CONTROL_MODE dc_dc_control_mode{};
     };
 
+    constexpr auto SCREEN_WIDTH = 10U;
+    constexpr auto SCREEN_HEIGHT = 10U;
+
 }; // namespace SH1107
 
 #undef PACKED
