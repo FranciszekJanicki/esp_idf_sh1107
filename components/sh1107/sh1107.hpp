@@ -26,10 +26,32 @@ namespace SH1107 {
 
         ~SH1107() noexcept;
 
-        void display(std::uint8_t const* const byte_image, std::size_t const bytes) const noexcept;
+        void display_frame_buf() noexcept;
+        void clear_frame_buf() noexcept;
+
+        void set_pixel(std::uint8_t const x, std::uint8_t const y, bool const color = true) noexcept;
+        void draw_line(std::uint8_t const x0,
+                       std::uint8_t const y0,
+                       std::uint8_t const x1,
+                       std::uint8_t const y1,
+                       bool const color = true) noexcept;
+        void draw_circle(std::uint8_t const x0,
+                         std::uint8_t const y0,
+                         std::uint8_t const r,
+                         bool const color = true) noexcept;
+        void draw_bitmap(std::uint8_t const x,
+                         std::uint8_t const y,
+                         std::uint8_t const w,
+                         std::uint8_t const h,
+                         std::uint8_t const* const bitmap,
+                         bool const color = true) noexcept;
+        void draw_char(std::uint8_t const x, std::uint8_t const y, char const c) noexcept;
+        void draw_string(std::uint8_t const x, std::uint8_t const y, std::string const& s) noexcept;
+        void draw_string_formatted(std::uint8_t const x, std::uint8_t const y, std::string const& s, ...) noexcept;
 
     private:
         void transmit_data(std::uint8_t const byte) const noexcept;
+        void transmit_data(std::uint8_t const* const bytes, std::size_t const size) const noexcept;
 
         void transmit_command(std::uint8_t const byte) const noexcept;
 
@@ -54,10 +76,9 @@ namespace SH1107 {
         void send_display_on_off_command(DISPLAY_ON_OFF const display_on_off) const noexcept;
         void send_page_address_command(PAGE_ADDRESS const page_address) const noexcept;
         void send_output_scan_direction_command(OUTPUT_SCAN_DIRECTION const output_scan_direction) const noexcept;
-        void
-        send_read_modify_write_command(READ_MODIFY_WRITE const read_modify_write = READ_MODIFY_WRITE{}) const noexcept;
-        void send_end_command(END const end = END{}) const noexcept;
-        void send_nop_command(NOP const nop = NOP{}) const noexcept;
+        void send_read_modify_write_command(READ_MODIFY_WRITE const read_modify_write) const noexcept;
+        void send_end_command(END const end) const noexcept;
+        void send_nop_command(NOP const nop) const noexcept;
         void send_write_display_data_command(WRITE_DISPLAY_DATA const write_display_data) const noexcept;
         void send_read_id_command(READ_ID const read_id) const noexcept;
         void send_read_display_data_command(READ_DISPLAY_DATA const read_display_data) const noexcept;
@@ -75,6 +96,12 @@ namespace SH1107 {
 
         gpio_num_t control_pin_{};
         gpio_num_t reset_pin_{};
+
+        void** data_ptrs{nullptr};
+        std::uint8_t* frame_buf{nullptr};
+        std::uint8_t data_count{};
+        std::uint8_t trans_queue_size{};
+        std::uint32_t last_warned_at{};
 
         SPIDevice spi_device_{};
     };

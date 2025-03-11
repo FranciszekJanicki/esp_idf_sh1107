@@ -1,4 +1,5 @@
 #include "sh1107.hpp"
+#include "font5x7.hpp"
 #include "utility.hpp"
 
 namespace SH1107 {
@@ -17,32 +18,16 @@ namespace SH1107 {
         this->deinitialize();
     }
 
-    void SH1107::display(std::uint8_t const* const byte_image, std::size_t const bytes) const noexcept
-    {
-        std::uint8_t const width = (SCREEN_WIDTH % 8 == 0) ? (SCREEN_WIDTH / 8) : (SCREEN_WIDTH / 8 + 1);
-        std::uint8_t const height = SCREEN_HEIGHT;
-
-        std::uint8_t column = 0U;
-        std::uint8_t temp = 0U;
-
-        this->transmit_data(0xb0);
-        for (std::uint8_t j = 0U; j < height; j++) {
-            // column = 63 - j;
-            column = j;
-            this->transmit_command(0x00 + (column & 0x0f));
-            this->transmit_command(0x10 + (column >> 4));
-            for (std::uint8_t i = 0U; i < width; i++) {
-                temp = (byte_image[i + j * (width)]);
-                temp = Utility::reflection(temp);
-                this->transmit_data(temp);
-            }
-        }
-    }
-
     void SH1107::transmit_data(std::uint8_t const byte) const noexcept
     {
         this->select_control_pad(ControlPad::DISPLAY_DATA);
         this->spi_device_.transmit_byte(byte);
+    }
+
+    void SH1107::transmit_data(std::uint8_t const* const bytes, std::size_t const size) const noexcept
+    {
+        this->select_control_pad(ControlPad::DISPLAY_DATA);
+        this->spi_device_.transmit_bytes(bytes, size);
     }
 
     void SH1107::transmit_command(std::uint8_t const byte) const noexcept
@@ -228,6 +213,234 @@ namespace SH1107 {
     {
         this->write_byte(std::to_underlying(RegAddress::DISPLAY_START_LINE),
                          std::bit_cast<std::uint8_t>(display_start_line));
+    }
+
+    void SH1107::display_frame_buf()
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        // auto cmds = std::uint8_t;
+        // cmds[0] = CMD_SET_X_ADDR;
+        // cmds[1] = CMD_SET_Y_ADDR;
+
+        this->send_lower_column_address_command(LOWER_COLUMN_ADDRESS{.address = 0});
+        this->send_higher_column_address_command(HIGHER_COLUMN_ADDRESS{.address = 0});
+
+        this->transmit_data(this->frame_buf, OLED_FRAME_BUF_SIZE);
+    }
+
+    void SH1107::clear_frame_buf() noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        std::memset(this->frame_buf, 0U, OLED_FRAME_BUF_SIZE);
+    }
+
+    void SH1107::set_pixel(std::uint8_t const x, std::uint8_t const y, bool const color) noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        if (x >= OLED_WIDTH || y >= OLED_HEIGHT) {
+            return;
+        }
+
+        if (color)
+            this->frame_buf[x + (y / 8) * OLED_WIDTH] |= 1 << (y % 8);
+        else
+            this->frame_buf[x + (y / 8) * OLED_WIDTH] &= ~(1 << (y % 8));
+    }
+
+    void SH1107::draw_line(std::uint8_t const x0,
+                           std::uint8_t const y0,
+                           std::uint8_t const x1,
+                           std::uint8_t const y1,
+                           bool const color) noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        auto dx = std::abs(x1 - x0);
+        auto dy = -std::abs(y1 - y0);
+        auto sx = x0 < x1 ? 1 : -1;
+        auto sy = y0 < y1 ? 1 : -1;
+        auto err = dx + dy;
+        auto err2 = 0;
+        auto current_x0 = x0;
+        auto current_y0 = y0;
+
+        while (1) {
+            this->set_pixel(current_x0, current_y0, color);
+
+            if (current_x0 == x1 && current_y0 == y1) {
+                break;
+            }
+
+            err2 = 2 * err;
+
+            if (err2 >= dy) {
+                err += dy;
+                current_x0 += sx;
+
+                if (current_x0 > OLED_WIDTH) {
+                    break;
+                }
+            }
+
+            if (err2 <= dx) {
+                err += dx;
+                current_y0 += sy;
+
+                if (current_y0 > OLED_HEIGHT) {
+                    break;
+                }
+            }
+        }
+    }
+
+    void
+    SH1107::draw_circle(std::uint8_t const x0, std::uint8_t const y0, std::uint8_t const r, bool const color) noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        auto x = -r;
+        auto y = 0;
+        auto err = 2 - 2 * r;
+        auto current_r = r;
+
+        do {
+            this->set_pixel(x0 - x, y0 + y, color);
+            this->set_pixel(x0 - y, y0 - x, color);
+            this->set_pixel(x0 + x, y0 - y, color);
+            this->set_pixel(x0 + y, y0 + x, color);
+
+            current_r = err;
+
+            if (current_r > x) {
+                ++x;
+                err = err + x * 2 + 1;
+            }
+
+            if (current_r <= y) {
+                ++y;
+                err = err + y * 2 + 1;
+            }
+        } while (x < 0);
+    }
+
+    void SH1107::draw_bitmap(std::uint8_t const x,
+                             std::uint8_t const y,
+                             std::uint8_t const w,
+                             std::uint8_t const h,
+                             std::uint8_t const* const bitmap,
+                             bool const color) noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        std::uint8_t const width = (OLED_WIDTH % 8 == 0) ? (OLED_WIDTH / 8) : (OLED_WIDTH / 8 + 1);
+        std::uint8_t const height = OLED_HEIGHT;
+
+        std::uint8_t column = 0U;
+        std::uint8_t temp = 0U;
+
+        this->transmit_data(0xb0);
+        for (std::uint8_t j = 0U; j < height; j++) {
+            // column = 63 - j;
+            column = j;
+            this->transmit_command(0x00 + (column & 0x0f));
+            this->transmit_command(0x10 + (column >> 4));
+            for (std::uint8_t i = 0U; i < width; i++) {
+                temp = bitmap[i + j * (width)];
+                temp = Utility::reflection(temp);
+                this->transmit_data(&temp, sizeof(temp));
+            }
+        }
+
+        // auto byte_width = (w + 7) / 8;
+        // auto b = 0;
+
+        // for (auto j = 0; j < h; j++, y++) {
+        //     for (auto i = 0; i < w; i++) {
+        //         if (i & 7)
+        //             b <<= 1;
+        //         else
+        //             b = bitmap[j * byte_width + i / 8];
+
+        //         if (b & (1U << 7U)) {
+        //             this->set_pixel(x + i, y, color);
+        //         }
+        //     }
+        // }
+    }
+
+    void SH1107::draw_char(std::uint8_t const x, std::uint8_t const y, char const c) noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        if (c < 32 || c > 127) {
+            return;
+        }
+
+        for (auto i = 0; i < FONT5X7_WIDTH; i++) {
+            auto line = font5x7[c - FONT5X7_CHAR_CODE_OFFSET][i];
+
+            for (auto j = 0; j < FONT5X7_HEIGHT; j++) {
+                this->set_pixel(x + i, y + j, line & (1U << j));
+            }
+        }
+    }
+
+    void SH1107::draw_string(std::uint8_t const x, std::uint8_t const y, std::string const& s) noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        auto curr_x = x;
+        for (auto const c : s) {
+            this->draw_char(curr_x, y, c);
+            curr_x += FONT5X7_WIDTH + 1;
+
+            if (curr_x >= OLED_WIDTH) {
+                break;
+            }
+        }
+    }
+
+    void SH1107::draw_string_formatted(std::uint8_t const x, std::uint8_t const y, std::string const& s, ...) noexcept
+    {
+        if (!this->initialized_) {
+            return;
+        }
+
+        va_list args;
+        va_start(args, s);
+
+        size_t size = vsnprintf(nullptr, 0, s.c_str(), args) + 1;
+        if (size <= 0) {
+            return;
+        }
+
+        std::string buf;
+        buf.reserve(size);
+        vsnprintf(buf.data(), size, s.c_str(), args);
+
+        va_end(args);
+
+        std::string formatted_string = buf.substr(0U, size - 1);
+        this->draw_string(x, y, formatted_string);
     }
 
 }; // namespace SH1107

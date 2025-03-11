@@ -22,6 +22,20 @@ namespace Utility {
         this->transmit_words(std::array<std::uint16_t, 1UL>{word});
     }
 
+    void SPIDevice::transmit_bytes(std::uint8_t const* const bytes, std::size_t const size) const noexcept
+    {
+        if (this->initialized_) {
+            spi_transaction_t transaction{};
+            transaction.length = 8 * size;
+            transaction.rxlength = 0;
+            transaction.flags = SPI_TRANS_USE_TXDATA;
+            std::memcpy(transaction.tx_data, bytes, size);
+            ESP_ERROR_CHECK(gpio_set_level(this->chip_select_, 0));
+            spi_device_polling_transmit(this->spi_device_, &transaction);
+            gpio_set_level(this->chip_select_, 1);
+        }
+    }
+
     void SPIDevice::transmit_byte(std::uint8_t const byte) const noexcept
     {
         this->transmit_bytes(std::array<std::uint8_t, 1UL>{byte});
@@ -57,18 +71,6 @@ namespace Utility {
         return this->read_bytes<1UL>(reg_address)[0];
     }
 
-    std::uint8_t SPIDevice::read_bits(std::uint8_t const reg_address,
-                                      std::uint8_t const position,
-                                      std::size_t const size) const noexcept
-    {
-        return Utility::read_bits(this->read_byte(reg_address), size, position);
-    }
-
-    bool SPIDevice::read_bit(std::uint8_t const reg_address, std::uint8_t const position) const noexcept
-    {
-        return Utility::read_bit(this->read_byte(reg_address), position);
-    }
-
     void SPIDevice::write_dword(std::uint8_t const reg_address, std::uint32_t const dword) const noexcept
     {
         this->write_dwords(reg_address, std::array<std::uint32_t, 1UL>{dword});
@@ -84,22 +86,14 @@ namespace Utility {
         this->write_bytes(reg_address, std::array<std::uint8_t, 1UL>{byte});
     }
 
-    void SPIDevice::write_bits(std::uint8_t const reg_address,
-                               std::uint8_t const bits,
-                               std::uint8_t const position,
-                               std::size_t const size) const noexcept
+    std::uint8_t SPIDevice::reg_address_to_read_command(std::uint8_t const reg_address) noexcept
     {
-        std::uint8_t write{this->read_byte(reg_address)};
-        Utility::write_bits(write, bits, size, position);
-        this->write_byte(reg_address, write);
+        return reg_address & ~(1U << (std::bit_width(reg_address) - 1U));
     }
 
-    void
-    SPIDevice::write_bit(std::uint8_t const reg_address, bool const bit, std::uint8_t const position) const noexcept
+    std::uint8_t SPIDevice::reg_address_to_write_command(std::uint8_t const reg_address) noexcept
     {
-        std::uint8_t write{this->read_byte(reg_address)};
-        Utility::write_bit(write, bit, position);
-        this->write_byte(reg_address, write);
+        return reg_address | (1U << (std::bit_width(reg_address) - 1U));
     }
 
     auto SPIDevice::initialize() noexcept -> void

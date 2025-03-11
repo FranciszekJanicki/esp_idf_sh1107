@@ -50,8 +50,19 @@ namespace SH1107 {
         DC_DC_CONTROL_MODE dc_dc_control_mode{};
     };
 
-    constexpr auto SCREEN_WIDTH = 10U;
-    constexpr auto SCREEN_HEIGHT = 10U;
+    constexpr auto OLED_CONTROLLER_TRANS_QUEUE_SIZE = 32U;
+    constexpr auto OLED_CONTROLLER_MAX_TRANS_LENGTH_WITHOUT_DMA = 256U;
+
+    constexpr auto OLED_WIDTH = 84U;
+    constexpr auto OLED_BYTE_HEIGHT = 6U;
+    constexpr auto OLED_HEIGHT = OLED_BYTE_HEIGHT * 8;
+    constexpr auto OLED_FRAME_BUF_SIZE = OLED_WIDTH * OLED_BYTE_HEIGHT;
+
+    constexpr auto OLED_DEFAULT_CONTRAST = 50U;
+    constexpr auto OLED_TEMPERATURE_COEFFICIENT = 2U;
+    constexpr auto OLED_DEFAULT_BIAS = 5U;
+
+    constexpr auto OLED_CONTROLLER_WARN_SUPPRESS_INTERVAL_MS = 5000U;
 
 }; // namespace SH1107
 

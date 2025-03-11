@@ -36,6 +36,7 @@ namespace Utility {
 
         template <std::size_t SIZE>
         void transmit_bytes(std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
+        void transmit_bytes(std::uint8_t const* const bytes, std::size_t const size) const noexcept;
         void transmit_byte(std::uint8_t const byte) const noexcept;
 
         template <std::size_t SIZE>
@@ -62,10 +63,6 @@ namespace Utility {
         std::array<std::uint8_t, SIZE> read_bytes(std::uint8_t const reg_address) const noexcept;
         std::uint8_t read_byte(std::uint8_t const reg_address) const noexcept;
 
-        std::uint8_t
-        read_bits(std::uint8_t const reg_address, std::uint8_t const position, std::size_t const size) const noexcept;
-        bool read_bit(std::uint8_t const reg_address, std::uint8_t const position) const noexcept;
-
         template <std::size_t SIZE>
         void write_dwords(std::uint8_t const reg_address, std::array<std::uint32_t, SIZE> const& dwords) const noexcept;
         void write_dword(std::uint8_t const reg_address, std::uint32_t const dword) const noexcept;
@@ -78,13 +75,10 @@ namespace Utility {
         void write_bytes(std::uint8_t const reg_address, std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
         void write_byte(std::uint8_t const reg_address, std::uint8_t const byte) const noexcept;
 
-        void write_bits(std::uint8_t const reg_address,
-                        std::uint8_t const bits,
-                        std::uint8_t const position,
-                        std::size_t const size) const noexcept;
-        void write_bit(std::uint8_t const reg_address, bool const bit, std::uint8_t const position) const noexcept;
-
     private:
+        static std::uint8_t reg_address_to_read_command(std::uint8_t const reg_address) noexcept;
+        static std::uint8_t reg_address_to_write_command(std::uint8_t const reg_address) noexcept;
+
         static constexpr std::uint32_t TIMEOUT{100U};
 
         void initialize() noexcept;
@@ -118,7 +112,7 @@ namespace Utility {
             transaction.rxlength = 0;
             transaction.flags = SPI_TRANS_USE_TXDATA;
             std::memcpy(transaction.tx_data, write.data(), SIZE);
-            gpio_set_level(this->chip_select_, 0);
+            ESP_ERROR_CHECK(gpio_set_level(this->chip_select_, 0));
             spi_device_polling_transmit(this->spi_device_, &transaction);
             gpio_set_level(this->chip_select_, 1);
         }
@@ -146,7 +140,7 @@ namespace Utility {
             transaction.rxlength = 8 * SIZE;
             transaction.flags = SPI_TRANS_USE_RXDATA;
             gpio_set_level(this->chip_select_, 0);
-            spi_device_polling_transmit(this->spi_device_, &transaction);
+            ESP_ERROR_CHECK(spi_device_polling_transmit(this->spi_device_, &transaction));
             gpio_set_level(this->chip_select_, 1);
             std::memcpy(read.data(), transaction.rx_data, SIZE);
         }
@@ -176,7 +170,7 @@ namespace Utility {
             transaction.addr = reg_address;
             transaction.flags = SPI_TRANS_USE_RXDATA;
             gpio_set_level(this->chip_select_, 0);
-            spi_device_polling_transmit(this->spi_device_, &transaction);
+            ESP_ERROR_CHECK(spi_device_polling_transmit(this->spi_device_, &transaction));
             gpio_set_level(this->chip_select_, 1);
             std::memcpy(read.data(), transaction.rx_data, SIZE);
         }
@@ -210,7 +204,7 @@ namespace Utility {
             transaction.flags = SPI_TRANS_USE_TXDATA;
             std::memcpy(transaction.tx_data, write.data(), SIZE);
             gpio_set_level(this->chip_select_, 0);
-            spi_device_polling_transmit(this->spi_device_, &transaction);
+            ESP_ERROR_CHECK(spi_device_polling_transmit(this->spi_device_, &transaction));
             gpio_set_level(this->chip_select_, 1);
         }
     }
