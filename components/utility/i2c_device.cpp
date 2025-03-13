@@ -52,18 +52,6 @@ namespace Utility {
         return this->read_bytes<1UL>(reg_address)[0];
     }
 
-    std::uint8_t I2CDevice::read_bits(std::uint8_t const reg_address,
-                                      std::uint8_t const position,
-                                      std::size_t const size) const noexcept
-    {
-        return Utility::read_bits(this->read_byte(reg_address), size, position);
-    }
-
-    bool I2CDevice::read_bit(std::uint8_t const reg_address, std::uint8_t const position) const noexcept
-    {
-        return Utility::read_bit(this->read_byte(reg_address), position);
-    }
-
     void I2CDevice::write_dword(std::uint8_t const reg_address, std::uint32_t const dword) const noexcept
     {
         this->write_dwords(reg_address, std::array<std::uint32_t, 1UL>{dword});
@@ -77,24 +65,6 @@ namespace Utility {
     void I2CDevice::write_byte(std::uint8_t const reg_address, std::uint8_t const byte) const noexcept
     {
         this->write_bytes(reg_address, std::array<std::uint8_t, 1UL>{byte});
-    }
-
-    void I2CDevice::write_bits(std::uint8_t const reg_address,
-                               std::uint8_t const bits,
-                               std::uint8_t const position,
-                               std::size_t const size) const noexcept
-    {
-        std::uint8_t write{this->read_byte(reg_address)};
-        Utility::write_bits(write, bits, size, position);
-        this->write_byte(reg_address, write);
-    }
-
-    void
-    I2CDevice::write_bit(std::uint8_t const reg_address, bool const bit, std::uint8_t const position) const noexcept
-    {
-        std::uint8_t write{this->read_byte(reg_address)};
-        Utility::write_bit(write, bit, position);
-        this->write_byte(reg_address, write);
     }
 
     void I2CDevice::initialize() noexcept

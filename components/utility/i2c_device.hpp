@@ -60,10 +60,6 @@ namespace Utility {
         std::array<std::uint8_t, SIZE> read_bytes(std::uint8_t const reg_address) const noexcept;
         std::uint8_t read_byte(std::uint8_t const reg_address) const noexcept;
 
-        std::uint8_t
-        read_bits(std::uint8_t const reg_address, std::uint8_t const position, std::size_t const size) const noexcept;
-        bool read_bit(std::uint8_t const reg_address, std::uint8_t const position) const noexcept;
-
         template <std::size_t SIZE>
         void write_dwords(std::uint8_t const reg_address, std::array<std::uint32_t, SIZE> const& dwords) const noexcept;
         void write_dword(std::uint8_t const reg_address, std::uint32_t const dword) const noexcept;
@@ -75,12 +71,6 @@ namespace Utility {
         template <std::size_t SIZE>
         void write_bytes(std::uint8_t const reg_address, std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
         void write_byte(std::uint8_t const reg_address, std::uint8_t const byte) const noexcept;
-
-        void write_bits(std::uint8_t const reg_address,
-                        std::uint8_t const bits,
-                        std::uint8_t const position,
-                        std::size_t const size) const noexcept;
-        void write_bit(std::uint8_t const reg_address, bool const bit, std::uint8_t const position) const noexcept;
 
     private:
         static constexpr std::uint32_t TIMEOUT{100U};

@@ -34,10 +34,10 @@ namespace DS18B20 {
         void write32(std::uint32_t const data) noexcept;
         void write64(std::uint64_t const data) noexcept;
 
-        [[nodiscard]] std::uint8_t read8() noexcept;
-        [[nodiscard]] std::uint16_t read16() noexcept;
-        [[nodiscard]] std::uint32_t read32() noexcept;
-        [[nodiscard]] std::uint64_t read64() noexcept;
+        std::uint8_t read8() noexcept;
+        std::uint16_t read16() noexcept;
+        std::uint32_t read32() noexcept;
+        std::uint64_t read64() noexcept;
 
     private:
         static std::uint8_t parse_symbols(std::span<rmt_symbol_word_t> const symbols) noexcept;

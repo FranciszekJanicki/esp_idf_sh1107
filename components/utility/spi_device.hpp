@@ -167,7 +167,7 @@ namespace Utility {
             spi_transaction_t transaction{};
             transaction.length = 0;
             transaction.rxlength = 8 * SIZE;
-            transaction.addr = reg_address;
+            transaction.addr = reg_address_to_read_command(reg_address);
             transaction.flags = SPI_TRANS_USE_RXDATA;
             gpio_set_level(this->chip_select_, 0);
             ESP_ERROR_CHECK(spi_device_polling_transmit(this->spi_device_, &transaction));
@@ -200,7 +200,7 @@ namespace Utility {
             spi_transaction_t transaction{};
             transaction.length = 8 * SIZE;
             transaction.rxlength = 0;
-            transaction.addr = reg_address;
+            transaction.addr = reg_address_to_write_command(reg_address);
             transaction.flags = SPI_TRANS_USE_TXDATA;
             std::memcpy(transaction.tx_data, write.data(), SIZE);
             gpio_set_level(this->chip_select_, 0);

@@ -29,25 +29,18 @@ namespace SH1107 {
         void display_frame_buf() noexcept;
         void clear_frame_buf() noexcept;
 
-        void set_pixel(std::uint8_t const x, std::uint8_t const y, bool const color = true) noexcept;
-        void draw_line(std::uint8_t const x0,
-                       std::uint8_t const y0,
-                       std::uint8_t const x1,
-                       std::uint8_t const y1,
-                       bool const color = true) noexcept;
-        void draw_circle(std::uint8_t const x0,
-                         std::uint8_t const y0,
-                         std::uint8_t const r,
-                         bool const color = true) noexcept;
-        void draw_bitmap(std::uint8_t const x,
-                         std::uint8_t const y,
-                         std::uint8_t const w,
-                         std::uint8_t const h,
-                         std::uint8_t const* const bitmap,
-                         bool const color = true) noexcept;
-        void draw_char(std::uint8_t const x, std::uint8_t const y, char const c) noexcept;
-        void draw_string(std::uint8_t const x, std::uint8_t const y, std::string const& s) noexcept;
-        void draw_string_formatted(std::uint8_t const x, std::uint8_t const y, std::string const& s, ...) noexcept;
+        void set_pixel(std::uint8_t x, std::uint8_t y, bool color = true) noexcept;
+        void draw_line(std::uint8_t x0, std::uint8_t y0, std::uint8_t x1, std::uint8_t y1, bool color = true) noexcept;
+        void draw_circle(std::uint8_t x0, std::uint8_t y0, std::uint8_t r, bool color = true) noexcept;
+        void draw_bitmap(std::uint8_t x,
+                         std::uint8_t y,
+                         std::uint8_t w,
+                         std::uint8_t h,
+                         std::uint8_t* const bitmap,
+                         bool color = true) noexcept;
+        void draw_char(std::uint8_t x, std::uint8_t y, char c) noexcept;
+        void draw_string(std::uint8_t x, std::uint8_t y, std::string const& s) noexcept;
+        void draw_string_formatted(std::uint8_t x, std::uint8_t y, std::string const& s, ...) noexcept;
 
     private:
         void transmit_data(std::uint8_t const byte) const noexcept;
