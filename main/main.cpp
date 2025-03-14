@@ -21,8 +21,13 @@ namespace {
 
         auto sh1107 = SH1107::SH1107{std::move(spi_device), config, SH1107_DC, SH1107_RST};
 
+        std::fill(sh1107.frame_buf_.begin(), sh1107.frame_buf_.end(), 0x00);
+
         while (true) {
-            vTaskDelay(pdMS_TO_TICKS(10UL));
+            sh1107.draw_string(0, 0, "DUPA");
+            sh1107.display_frame_buf();
+            sh1107.transmit_command(0xAF);   // 0xAF = Display ON;
+            vTaskDelay(pdMS_TO_TICKS(1000)); // Repeat every second
         }
 
         deinitialize_gpio();
@@ -31,7 +36,7 @@ namespace {
     }
 
     auto static_task = StaticTask_t{};
-    auto task_stack = std::array<std::uint8_t, 4096UL>{};
+    auto task_stack = std::array<std::uint8_t, 4096 * 3UL>{};
 
     void start_task() noexcept
     {

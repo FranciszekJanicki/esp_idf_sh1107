@@ -84,13 +84,10 @@ namespace SH1107 {
 
     void SH1107::device_reset() const noexcept
     {
-        vTaskDelay(pdMS_TO_TICKS(100U));
-        gpio_set_level(this->reset_pin_, 1U);
-        vTaskDelay(pdMS_TO_TICKS(100U));
         gpio_set_level(this->reset_pin_, 0U);
-        vTaskDelay(pdMS_TO_TICKS(100U));
+        vTaskDelay(pdMS_TO_TICKS(10U));
         gpio_set_level(this->reset_pin_, 1U);
-        vTaskDelay(pdMS_TO_TICKS(100U));
+        vTaskDelay(pdMS_TO_TICKS(10U));
     }
 
     void SH1107::entire_display_on() const noexcept
@@ -238,146 +235,78 @@ namespace SH1107 {
                          std::bit_cast<std::uint8_t>(display_start_line));
     }
 
-    void SH1107::display_frame_buf()
-    {
-        if (!this->initialized_) {
-            return;
-        }
-
-        // auto cmds = std::uint8_t;
-        // cmds[0] = CMD_SET_X_ADDR;
-        // cmds[1] = CMD_SET_Y_ADDR;
-
-        this->send_lower_column_address_command(LOWER_COLUMN_ADDRESS{.address = 0});
-        this->send_higher_column_address_command(HIGHER_COLUMN_ADDRESS{.address = 0});
-
-        this->transmit_data(this->frame_buf, OLED_FRAME_BUF_SIZE);
-    }
-
-    void SH1107::clear_frame_buf() noexcept
-    {
-        if (!this->initialized_) {
-            return;
-        }
-
-        std::memset(this->frame_buf, 0U, OLED_FRAME_BUF_SIZE);
-    }
-
     void SH1107::set_pixel(std::uint8_t x, std::uint8_t y, bool color) noexcept
     {
-        if (!this->initialized_) {
-            return;
-        }
-
         if (x >= OLED_WIDTH || y >= OLED_HEIGHT) {
             return;
         }
 
-        if (color)
-            this->frame_buf[x + (y / 8) * OLED_WIDTH] |= 1 << (y % 8);
-        else
-            this->frame_buf[x + (y / 8) * OLED_WIDTH] &= ~(1 << (y % 8));
+        std::size_t byte_index = (y / 8) * OLED_WIDTH + x;
+        std::uint8_t bit_mask = 1 << (y % 8);
+
+        if (color) {
+            frame_buf_[byte_index] |= bit_mask;
+        } else {
+            frame_buf_[byte_index] &= ~bit_mask;
+        }
     }
 
     void SH1107::draw_line(std::uint8_t x0, std::uint8_t y0, std::uint8_t x1, std::uint8_t y1, bool color) noexcept
     {
-        if (!this->initialized_) {
-            return;
-        }
+        int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy, e2;
 
-        auto dx = std::abs(x1 - x0);
-        auto dy = -std::abs(y1 - y0);
-        auto sx = x0 < x1 ? 1 : -1;
-        auto sy = y0 < y1 ? 1 : -1;
-        auto err = dx + dy;
-        auto err2 = 0;
-
-        while (1) {
-            this->set_pixel(x0, y0, color);
-
-            if (x0 == x1 && y0 == y1) {
+        while (true) {
+            set_pixel(x0, y0, color);
+            if (x0 == x1 && y0 == y1)
                 break;
-            }
-
-            err2 = 2 * err;
-
-            if (err2 >= dy) {
+            e2 = 2 * err;
+            if (e2 >= dy) {
                 err += dy;
                 x0 += sx;
-
-                if (x0 > OLED_WIDTH) {
-                    break;
-                }
             }
-
-            if (err2 <= dx) {
+            if (e2 <= dx) {
                 err += dx;
                 y0 += sy;
-
-                if (y0 > OLED_HEIGHT) {
-                    break;
-                }
             }
         }
     }
 
     void SH1107::draw_circle(std::uint8_t x0, std::uint8_t y0, std::uint8_t r, bool color) noexcept
     {
-        if (!this->initialized_) {
-            return;
+        int x = r, y = 0, err = 1 - x;
+        while (x >= y) {
+            set_pixel(x0 + x, y0 + y, color);
+            set_pixel(x0 + y, y0 + x, color);
+            set_pixel(x0 - y, y0 + x, color);
+            set_pixel(x0 - x, y0 + y, color);
+            set_pixel(x0 - x, y0 - y, color);
+            set_pixel(x0 - y, y0 - x, color);
+            set_pixel(x0 + y, y0 - x, color);
+            set_pixel(x0 + x, y0 - y, color);
+            y++;
+            if (err < 0) {
+                err += 2 * y + 1;
+            } else {
+                x--;
+                err += 2 * (y - x) + 1;
+            }
         }
-
-        auto x = -r;
-        auto y = 0;
-        auto err = 2 - 2 * r;
-
-        do {
-            this->set_pixel(x0 - x, y0 + y, color);
-            this->set_pixel(x0 - y, y0 - x, color);
-            this->set_pixel(x0 + x, y0 - y, color);
-            this->set_pixel(x0 + y, y0 + x, color);
-
-            r = err;
-
-            if (r > x) {
-                ++x;
-                err = err + x * 2 + 1;
-            }
-
-            if (r <= y) {
-                ++y;
-                err = err + y * 2 + 1;
-            }
-        } while (x < 0);
     }
 
     void SH1107::draw_bitmap(std::uint8_t x,
                              std::uint8_t y,
                              std::uint8_t w,
                              std::uint8_t h,
-                             std::uint8_t* const bitmap,
+                             std::uint8_t* bitmap,
                              bool color) noexcept
     {
-        if (!this->initialized_) {
-            return;
-        }
-
-        auto byte_width = (w + 7) / 8;
-        auto b = 0;
-
-        this->transmit_data(0xb0);
-        for (auto j = 0; j < h; j++, ++y) {
-            this->transmit_command(0x00 + (j & 0x0f));
-            this->transmit_command(0x10 + (j >> 4));
-            for (auto i = 0; i < w; i++) {
-                if (i & 7) {
-                    b <<= 1;
-                } else {
-                    b = bitmap[j * byte_width + i / 8];
-                }
-
-                if (b & (1U << 7U)) {
-                    this->set_pixel(x + i, y, color);
+        for (std::uint8_t j = 0; j < h; j++) {
+            for (std::uint8_t i = 0; i < w; i++) {
+                std::uint8_t byte = bitmap[j * ((w + 7) / 8) + (i / 8)];
+                if (byte & (1 << (7 - (i % 8)))) {
+                    set_pixel(x + i, y + j, color);
                 }
             }
         }
@@ -385,61 +314,41 @@ namespace SH1107 {
 
     void SH1107::draw_char(std::uint8_t x, std::uint8_t y, char c) noexcept
     {
-        if (!this->initialized_) {
+        if (c < 32 || c > 127)
             return;
-        }
 
-        if (c < 32 || c > 127) {
-            return;
-        }
-
-        for (auto i = 0; i < FONT5X7_WIDTH; i++) {
-            auto line = font5x7[c - FONT5X7_CHAR_CODE_OFFSET][i];
-
-            for (auto j = 0; j < FONT5X7_HEIGHT; j++) {
-                this->set_pixel(x + i, y + j, line & (1U << j));
+        for (std::uint8_t i = 0; i < FONT5X7_WIDTH; i++) {
+            std::uint8_t line = font5x7[c - 32][i];
+            for (std::uint8_t j = 0; j < FONT5X7_HEIGHT; j++) {
+                set_pixel(x + i, y + j, line & (1 << j));
             }
         }
     }
 
     void SH1107::draw_string(std::uint8_t x, std::uint8_t y, std::string const& s) noexcept
     {
-        if (!this->initialized_) {
-            return;
-        }
-
-        for (auto const c : s) {
-            this->draw_char(x, y, c);
+        for (char c : s) {
+            draw_char(x, y, c);
             x += FONT5X7_WIDTH + 1;
-
-            if (x >= OLED_WIDTH) {
+            if (x >= OLED_WIDTH)
                 break;
-            }
         }
     }
 
-    void SH1107::draw_string_formatted(std::uint8_t x, std::uint8_t y, std::string const& s, ...) noexcept
+    void SH1107::display_frame_buf()
     {
-        if (!this->initialized_) {
-            return;
+        for (std::uint8_t page = 0; page < (OLED_HEIGHT / 8); page++) {
+            transmit_command(0xB0 | page);
+            transmit_command(0x00);
+            transmit_command(0x10);
+
+            transmit_data(this->frame_buf_.data() + page * OLED_WIDTH, OLED_WIDTH);
         }
+    }
 
-        va_list args;
-        va_start(args, s);
-
-        size_t size = vsnprintf(nullptr, 0, s.c_str(), args) + 1;
-        if (size <= 0) {
-            return;
-        }
-
-        std::string buf;
-        buf.reserve(size);
-        vsnprintf(buf.data(), size, s.c_str(), args);
-
-        va_end(args);
-
-        std::string formatted_string = buf.substr(0U, size - 1);
-        this->draw_string(x, y, formatted_string);
+    void SH1107::clear_frame_buf() noexcept
+    {
+        std::fill(frame_buf_.begin(), frame_buf_.end(), 0);
     }
 
 }; // namespace SH1107

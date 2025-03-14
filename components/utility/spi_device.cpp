@@ -25,14 +25,23 @@ namespace Utility {
     void SPIDevice::transmit_bytes(std::uint8_t const* const bytes, std::size_t const size) const noexcept
     {
         if (this->initialized_) {
-            spi_transaction_t transaction{};
-            transaction.length = 8 * size;
-            transaction.rxlength = 0;
-            transaction.flags = SPI_TRANS_USE_TXDATA;
-            std::memcpy(transaction.tx_data, bytes, size);
-            ESP_ERROR_CHECK(gpio_set_level(this->chip_select_, 0));
-            spi_device_polling_transmit(this->spi_device_, &transaction);
-            gpio_set_level(this->chip_select_, 1);
+            auto dma_buffer = static_cast<std::uint8_t*>(heap_caps_malloc(size, MALLOC_CAP_DMA));
+            if (dma_buffer) {
+                std::memcpy(dma_buffer, bytes, size);
+
+                spi_transaction_t transaction{};
+                transaction.length = size * 8;
+                transaction.rxlength = 0;
+                transaction.flags = 0;
+                transaction.tx_buffer = dma_buffer;
+                gpio_set_level(this->chip_select_, 0);
+                spi_device_queue_trans(this->spi_device_, &transaction, portMAX_DELAY);
+
+                spi_transaction_t* result;
+                spi_device_get_trans_result(this->spi_device_, &result, TIMEOUT);
+                gpio_set_level(this->chip_select_, 1);
+                heap_caps_free(dma_buffer);
+            }
         }
     }
 
@@ -111,5 +120,4 @@ namespace Utility {
             this->initialized_ = false;
         }
     }
-
 }; // namespace Utility

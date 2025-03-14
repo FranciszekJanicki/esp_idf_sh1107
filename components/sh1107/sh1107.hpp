@@ -42,7 +42,6 @@ namespace SH1107 {
         void draw_string(std::uint8_t x, std::uint8_t y, std::string const& s) noexcept;
         void draw_string_formatted(std::uint8_t x, std::uint8_t y, std::string const& s, ...) noexcept;
 
-    private:
         void transmit_data(std::uint8_t const byte) const noexcept;
         void transmit_data(std::uint8_t const* const bytes, std::size_t const size) const noexcept;
 
@@ -93,13 +92,9 @@ namespace SH1107 {
         gpio_num_t control_pin_{};
         gpio_num_t reset_pin_{};
 
-        void** data_ptrs{nullptr};
-        std::uint8_t* frame_buf{nullptr};
-        std::uint8_t data_count{};
-        std::uint8_t trans_queue_size{};
-        std::uint32_t last_warned_at{};
-
         SPIDevice spi_device_{};
+
+        std::array<std::uint8_t, OLED_FRAME_BUF_SIZE> frame_buf_{};
     };
 
 }; // namespace SH1107
