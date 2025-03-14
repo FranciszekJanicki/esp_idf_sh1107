@@ -335,6 +335,26 @@ namespace SH1107 {
         }
     }
 
+    void SH1107::draw_string_formatted(std::uint8_t x, std::uint8_t y, std::string const& s, ...) noexcept
+    {
+        va_list args;
+        va_start(args, s);
+
+        size_t size = vsnprintf(nullptr, 0, s.c_str(), args) + 1;
+        if (size <= 0) {
+            return;
+        }
+
+        std::string buf;
+        buf.reserve(size);
+        vsnprintf(buf.data(), size, s.c_str(), args);
+
+        va_end(args);
+
+        std::string formatted_string = buf.substr(0U, size - 1);
+        this->draw_string(x, y, formatted_string);
+    }
+
     void SH1107::display_frame_buf()
     {
         for (std::uint8_t page = 0; page < (OLED_HEIGHT / 8); page++) {
