@@ -22,7 +22,7 @@ namespace {
         auto sh1107 = SH1107::SH1107{std::move(spi_device), config, SH1107_DC, SH1107_RST};
 
         while (true) {
-            vTaskDelay(pdMS_TO_TICKS(10));
+            vTaskDelay(pdMS_TO_TICKS(10UL));
         }
 
         deinitialize_gpio();

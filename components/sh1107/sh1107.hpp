@@ -55,6 +55,9 @@ namespace SH1107 {
 
         void device_reset() const noexcept;
 
+        void entire_display_on() const noexcept;
+        void entire_display_off() const noexcept;
+
         void display_on() const noexcept;
         void display_off() const noexcept;
 

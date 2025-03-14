@@ -10,7 +10,7 @@ auto constexpr SH1107_DC = gpio_num_t::GPIO_NUM_6;
 void initialize_gpio() noexcept
 {
     auto const sh1107_gpio_config =
-        gpio_config_t{.pin_bit_mask = (1U << SH1107_CS) | (1U << SH1107_DC) | (1U << SH1107_RST),
+        gpio_config_t{.pin_bit_mask = (1ULL << SH1107_CS) | (1ULL << SH1107_DC) | (1ULL << SH1107_RST),
                       .mode = GPIO_MODE_OUTPUT,
                       .pull_up_en = GPIO_PULLUP_DISABLE,
                       .pull_down_en = GPIO_PULLDOWN_DISABLE,

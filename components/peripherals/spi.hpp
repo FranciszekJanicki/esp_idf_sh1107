@@ -7,18 +7,13 @@
 
 auto sh1107_spi_device = spi_device_handle_t{};
 
-namespace {
-
-    auto constexpr SH1107_MOSI = gpio_num_t::GPIO_NUM_37;
-    auto constexpr SH1107_MISO = gpio_num_t::GPIO_NUM_35;
-    auto constexpr SH1107_SCLK = gpio_num_t::GPIO_NUM_36;
-
-}; // namespace
+auto constexpr SH1107_MOSI = gpio_num_t::GPIO_NUM_37;
+auto constexpr SH1107_SCLK = gpio_num_t::GPIO_NUM_36;
 
 void initialize_spi() noexcept
 {
     auto spi_bus3_config = spi_bus_config_t{};
-    spi_bus3_config.miso_io_num = SH1107_MISO;
+    spi_bus3_config.miso_io_num = -1;
     spi_bus3_config.mosi_io_num = SH1107_MOSI;
     spi_bus3_config.sclk_io_num = SH1107_SCLK;
     spi_bus3_config.quadhd_io_num = -1;
@@ -28,7 +23,7 @@ void initialize_spi() noexcept
 
     auto sh1107_spi_device_config = spi_device_interface_config_t{};
     sh1107_spi_device_config.spics_io_num = -1;
-    sh1107_spi_device_config.clock_speed_hz = 5 * 1000 * 1000;
+    sh1107_spi_device_config.clock_speed_hz = 4 * 1000 * 1000;
     sh1107_spi_device_config.mode = 3;
     sh1107_spi_device_config.address_bits = CHAR_BIT;
     sh1107_spi_device_config.command_bits = 0;

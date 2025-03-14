@@ -28,12 +28,12 @@ namespace SH1107 {
     } PACKED;
 
     struct ENTIRE_DISPLAY_ON_OFF {
-        std::uint8_t reserved : 7 = 0b10100010;
+        std::uint8_t reserved : 7 = 0b1010010;
         std::uint8_t on_off : 1;
     };
 
     struct NORMAL_REVERSE_DISPLAY {
-        std::uint8_t reserved : 7 = 0b1010111;
+        std::uint8_t reserved : 7 = 0b1010011;
         std::uint8_t normal : 1;
     } PACKED;
 

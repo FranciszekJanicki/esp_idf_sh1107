@@ -46,22 +46,32 @@ namespace SH1107 {
     void SH1107::initialize(Config const& config) noexcept
     {
         this->device_reset();
-        this->display_off();
 
-        this->send_lower_column_address_command(config.lower_column_address);
-        this->send_higher_column_address_command(config.higher_column_address);
-        this->send_page_address_command(config.page_address);
-        this->set_display_start_line_register(config.display_start_line);
-        this->set_contrast_control_register(config.contrast_control);
-        this->send_normal_reverse_display_command(config.normal_reverse_display);
-        this->set_multiplex_ratio_register(config.multiplex_ratio);
-        this->set_display_offset_register(config.display_offset);
-        this->set_clock_divide_osc_freq_register(config.clock_divide_osc_freq);
-        this->set_charge_period_register(config.charge_period);
-        this->set_vcom_deselect_level_register(config.vcom_deselect_level);
-        this->set_dc_dc_control_mode_register(config.dc_dc_control_mode);
+        this->transmit_command(0xAE); // Display OFF
+        this->transmit_command(0xD5); // Set Display Clock Divide Ratio
+        this->transmit_command(0x80);
+        this->transmit_command(0xA8); // Set Multiplex Ratio
+        this->transmit_command(0x3F);
+        this->transmit_command(0xD3); // Display Offset
+        this->transmit_command(0x00);
+        this->transmit_command(0x40); // Display Start Line
+        this->transmit_command(0x8D); // Charge Pump
+        this->transmit_command(0x14);
+        this->transmit_command(0xAF); // Display ON
 
-        this->display_on();
+        // this->send_lower_column_address_command(config.lower_column_address);
+        // this->send_higher_column_address_command(config.higher_column_address);
+        // this->send_page_address_command(config.page_address);
+        // this->set_display_start_line_register(config.display_start_line);
+        // this->set_contrast_control_register(config.contrast_control);
+        // this->send_normal_reverse_display_command(config.normal_reverse_display);
+        // this->set_multiplex_ratio_register(config.multiplex_ratio);
+        // this->set_display_offset_register(config.display_offset);
+        // this->set_clock_divide_osc_freq_register(config.clock_divide_osc_freq);
+        // this->set_charge_period_register(config.charge_period);
+        // this->set_vcom_deselect_level_register(config.vcom_deselect_level);
+        // this->set_dc_dc_control_mode_register(config.dc_dc_control_mode);
+
         this->initialized_ = true;
     }
 
@@ -74,10 +84,23 @@ namespace SH1107 {
 
     void SH1107::device_reset() const noexcept
     {
-        gpio_set_level(this->reset_pin_, 0U);
-        vTaskDelay(pdMS_TO_TICKS(200U));
+        vTaskDelay(pdMS_TO_TICKS(100U));
         gpio_set_level(this->reset_pin_, 1U);
-        vTaskDelay(pdMS_TO_TICKS(200U));
+        vTaskDelay(pdMS_TO_TICKS(100U));
+        gpio_set_level(this->reset_pin_, 0U);
+        vTaskDelay(pdMS_TO_TICKS(100U));
+        gpio_set_level(this->reset_pin_, 1U);
+        vTaskDelay(pdMS_TO_TICKS(100U));
+    }
+
+    void SH1107::entire_display_on() const noexcept
+    {
+        this->send_entire_display_on_off_command(ENTIRE_DISPLAY_ON_OFF{.on_off = true});
+    }
+
+    void SH1107::entire_display_off() const noexcept
+    {
+        this->send_entire_display_on_off_command(ENTIRE_DISPLAY_ON_OFF{.on_off = false});
     }
 
     void SH1107::display_on() const noexcept
