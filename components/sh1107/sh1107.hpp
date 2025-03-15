@@ -13,6 +13,8 @@ namespace SH1107 {
         using SPIDevice = Utility::SPIDevice;
 
         SH1107() noexcept = default;
+
+        SH1107(SPIDevice&& spi_device, gpio_num_t const control_pin, gpio_num_t const reset_pin) noexcept;
         SH1107(SPIDevice&& spi_device,
                Config const& config,
                gpio_num_t const control_pin,
@@ -49,7 +51,9 @@ namespace SH1107 {
 
         void write_byte(std::uint8_t const reg_address, std::uint8_t const byte) const noexcept;
 
+        void initialize() noexcept;
         void initialize(Config const& config) noexcept;
+
         void deinitialize() noexcept;
 
         void device_reset() const noexcept;
@@ -94,7 +98,7 @@ namespace SH1107 {
 
         SPIDevice spi_device_{};
 
-        std::array<std::uint8_t, OLED_FRAME_BUF_SIZE> frame_buf_{};
+        std::array<std::uint8_t, FRAME_BUF_SIZE> frame_buf_{};
     };
 
 }; // namespace SH1107

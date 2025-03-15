@@ -4,6 +4,12 @@
 
 namespace SH1107 {
 
+    SH1107::SH1107(SPIDevice&& spi_device, gpio_num_t const control_pin, gpio_num_t const reset_pin) noexcept :
+        control_pin_{control_pin}, reset_pin_{reset_pin}, spi_device_{std::forward<SPIDevice>(spi_device)}
+    {
+        this->initialize();
+    }
+
     SH1107::SH1107(SPIDevice&& spi_device,
                    Config const& config,
                    gpio_num_t const control_pin,
@@ -43,7 +49,7 @@ namespace SH1107 {
         this->spi_device_.transmit_byte(byte);
     }
 
-    void SH1107::initialize(Config const& config) noexcept
+    void SH1107::initialize() noexcept
     {
         this->device_reset();
 
@@ -59,20 +65,30 @@ namespace SH1107 {
         this->transmit_command(0x14);
         this->transmit_command(0xAF); // Display ON
 
-        // this->send_lower_column_address_command(config.lower_column_address);
-        // this->send_higher_column_address_command(config.higher_column_address);
-        // this->send_page_address_command(config.page_address);
-        // this->set_display_start_line_register(config.display_start_line);
-        // this->set_contrast_control_register(config.contrast_control);
-        // this->send_normal_reverse_display_command(config.normal_reverse_display);
-        // this->set_multiplex_ratio_register(config.multiplex_ratio);
-        // this->set_display_offset_register(config.display_offset);
-        // this->set_clock_divide_osc_freq_register(config.clock_divide_osc_freq);
-        // this->set_charge_period_register(config.charge_period);
-        // this->set_vcom_deselect_level_register(config.vcom_deselect_level);
-        // this->set_dc_dc_control_mode_register(config.dc_dc_control_mode);
+        this->initialized_ = true;
+        vTaskDelay(pdMS_TO_TICKS(100UL));
+    }
+
+    void SH1107::initialize(Config const& config) noexcept
+    {
+        this->device_reset();
+
+        this->send_lower_column_address_command(config.lower_column_address);
+        this->send_higher_column_address_command(config.higher_column_address);
+        this->send_page_address_command(config.page_address);
+        this->set_display_start_line_register(config.display_start_line);
+        this->set_contrast_control_register(config.contrast_control);
+        this->send_normal_reverse_display_command(config.normal_reverse_display);
+        this->set_multiplex_ratio_register(config.multiplex_ratio);
+        this->set_display_offset_register(config.display_offset);
+        this->set_clock_divide_osc_freq_register(config.clock_divide_osc_freq);
+        this->set_charge_period_register(config.charge_period);
+        this->set_vcom_deselect_level_register(config.vcom_deselect_level);
+        this->set_dc_dc_control_mode_register(config.dc_dc_control_mode);
+        this->display_on();
 
         this->initialized_ = true;
+        vTaskDelay(pdMS_TO_TICKS(100UL));
     }
 
     void SH1107::deinitialize() noexcept
@@ -85,9 +101,9 @@ namespace SH1107 {
     void SH1107::device_reset() const noexcept
     {
         gpio_set_level(this->reset_pin_, 0U);
-        vTaskDelay(pdMS_TO_TICKS(10U));
+        vTaskDelay(pdMS_TO_TICKS(100U));
         gpio_set_level(this->reset_pin_, 1U);
-        vTaskDelay(pdMS_TO_TICKS(10U));
+        vTaskDelay(pdMS_TO_TICKS(100U));
     }
 
     void SH1107::entire_display_on() const noexcept
@@ -237,11 +253,11 @@ namespace SH1107 {
 
     void SH1107::set_pixel(std::uint8_t x, std::uint8_t y, bool color) noexcept
     {
-        if (x >= OLED_WIDTH || y >= OLED_HEIGHT) {
+        if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT) {
             return;
         }
 
-        std::size_t byte_index = (y / 8) * OLED_WIDTH + x;
+        std::size_t byte_index = (y / 8) * SCREEN_WIDTH + x;
         std::uint8_t bit_mask = 1 << (y % 8);
 
         if (color) {
@@ -330,7 +346,7 @@ namespace SH1107 {
         for (char c : s) {
             draw_char(x, y, c);
             x += FONT5X7_WIDTH + 1;
-            if (x >= OLED_WIDTH)
+            if (x >= SCREEN_WIDTH)
                 break;
         }
     }
@@ -357,12 +373,12 @@ namespace SH1107 {
 
     void SH1107::display_frame_buf()
     {
-        for (std::uint8_t page = 0; page < (OLED_HEIGHT / 8); page++) {
+        for (std::uint8_t page = 0; page < (SCREEN_HEIGHT / 8); page++) {
             transmit_command(0xB0 | page);
             transmit_command(0x00);
             transmit_command(0x10);
 
-            transmit_data(this->frame_buf_.data() + page * OLED_WIDTH, OLED_WIDTH);
+            transmit_data(this->frame_buf_.data() + page * SCREEN_WIDTH, SCREEN_WIDTH);
         }
     }
 

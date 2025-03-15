@@ -17,17 +17,15 @@ namespace {
 
         auto spi_device = SPIDevice{sh1107_spi_device, SH1107_CS};
 
-        auto config = Config{};
+        auto sh1107 = SH1107::SH1107{std::move(spi_device), SH1107_DC, SH1107_RST};
 
-        auto sh1107 = SH1107::SH1107{std::move(spi_device), config, SH1107_DC, SH1107_RST};
-
-        std::fill(sh1107.frame_buf_.begin(), sh1107.frame_buf_.end(), 0x00);
+        sh1107.clear_frame_buf();
 
         while (true) {
             sh1107.draw_string(0, 0, "DUPA");
             sh1107.display_frame_buf();
-            sh1107.transmit_command(0xAF);   // 0xAF = Display ON;
-            vTaskDelay(pdMS_TO_TICKS(1000)); // Repeat every second
+            sh1107.transmit_command(0xAF);
+            vTaskDelay(pdMS_TO_TICKS(1000));
         }
 
         deinitialize_gpio();
