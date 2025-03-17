@@ -24,28 +24,15 @@ namespace SH1107 {
         this->deinitialize();
     }
 
-    void SH1107::transmit_data(std::uint8_t const byte) const noexcept
+    void SH1107::transmit_data_byte(std::uint8_t const byte) const noexcept
     {
         this->select_control_pad(ControlPad::DISPLAY_DATA);
         this->spi_device_.transmit_byte(byte);
     }
 
-    void SH1107::transmit_data(std::uint8_t const* const bytes, std::size_t const size) const noexcept
-    {
-        this->select_control_pad(ControlPad::DISPLAY_DATA);
-        this->spi_device_.transmit_bytes(bytes, size);
-    }
-
-    void SH1107::transmit_command(std::uint8_t const byte) const noexcept
+    void SH1107::transmit_command_byte(std::uint8_t const byte) const noexcept
     {
         this->select_control_pad(ControlPad::COMMAND_DATA);
-        this->spi_device_.transmit_byte(byte);
-    }
-
-    void SH1107::write_byte(std::uint8_t const reg_address, std::uint8_t const byte) const noexcept
-    {
-        this->select_control_pad(ControlPad::COMMAND_DATA);
-        this->spi_device_.transmit_byte(reg_address);
         this->spi_device_.transmit_byte(byte);
     }
 
@@ -53,17 +40,17 @@ namespace SH1107 {
     {
         this->device_reset();
 
-        this->transmit_command(0xAE); // Display OFF
-        this->transmit_command(0xD5); // Set Display Clock Divide Ratio
-        this->transmit_command(0x80);
-        this->transmit_command(0xA8); // Set Multiplex Ratio
-        this->transmit_command(0x3F);
-        this->transmit_command(0xD3); // Display Offset
-        this->transmit_command(0x00);
-        this->transmit_command(0x40); // Display Start Line
-        this->transmit_command(0x8D); // Charge Pump
-        this->transmit_command(0x14);
-        this->transmit_command(0xAF); // Display ON
+        this->transmit_command_byte(0xAE); // Display OFF
+        this->transmit_command_byte(0xD5); // Set Display Clock Divide Ratio
+        this->transmit_command_byte(0x80);
+        this->transmit_command_byte(0xA8); // Set Multiplex Ratio
+        this->transmit_command_byte(0x3F);
+        this->transmit_command_byte(0xD3); // Display Offset
+        this->transmit_command_byte(0x00);
+        this->transmit_command_byte(0x40); // Display Start Line
+        this->transmit_command_byte(0x8D); // Charge Pump
+        this->transmit_command_byte(0x14);
+        this->transmit_command_byte(0xAF); // Display ON
 
         this->initialized_ = true;
         vTaskDelay(pdMS_TO_TICKS(100UL));
@@ -72,20 +59,6 @@ namespace SH1107 {
     void SH1107::initialize(Config const& config) noexcept
     {
         this->device_reset();
-
-        this->send_lower_column_address_command(config.lower_column_address);
-        this->send_higher_column_address_command(config.higher_column_address);
-        this->send_page_address_command(config.page_address);
-        this->set_display_start_line_register(config.display_start_line);
-        this->set_contrast_control_register(config.contrast_control);
-        this->send_normal_reverse_display_command(config.normal_reverse_display);
-        this->set_multiplex_ratio_register(config.multiplex_ratio);
-        this->set_display_offset_register(config.display_offset);
-        this->set_clock_divide_osc_freq_register(config.clock_divide_osc_freq);
-        this->set_charge_period_register(config.charge_period);
-        this->set_vcom_deselect_level_register(config.vcom_deselect_level);
-        this->set_dc_dc_control_mode_register(config.dc_dc_control_mode);
-        this->display_on();
 
         this->initialized_ = true;
         vTaskDelay(pdMS_TO_TICKS(100UL));
@@ -108,22 +81,22 @@ namespace SH1107 {
 
     void SH1107::entire_display_on() const noexcept
     {
-        this->send_entire_display_on_off_command(ENTIRE_DISPLAY_ON_OFF{.on_off = true});
+        this->send_set_entire_display_on_off_command(true);
     }
 
     void SH1107::entire_display_off() const noexcept
     {
-        this->send_entire_display_on_off_command(ENTIRE_DISPLAY_ON_OFF{.on_off = false});
+        this->send_set_entire_display_on_off_command(false);
     }
 
     void SH1107::display_on() const noexcept
     {
-        this->send_display_on_off_command(DISPLAY_ON_OFF{.on_off = true});
+        this->send_set_display_on_off_command(true);
     }
 
     void SH1107::display_off() const noexcept
     {
-        this->send_display_on_off_command(DISPLAY_ON_OFF{.on_off = false});
+        this->send_set_display_on_off_command(false);
     }
 
     void SH1107::select_control_pad(ControlPad const control_pad) const noexcept
@@ -131,124 +104,197 @@ namespace SH1107 {
         gpio_set_level(this->control_pin_, std::to_underlying(control_pad));
     }
 
-    void SH1107::send_lower_column_address_command(LOWER_COLUMN_ADDRESS const lower_column_address) const noexcept
+    void SH1107::send_set_lower_column_address_command(std::uint8_t const address) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(lower_column_address));
+        this->send_set_lower_column_address_command(SET_LOWER_COLUMN_ADDRESS{.address = address});
     }
 
-    void SH1107::send_higher_column_address_command(HIGHER_COLUMN_ADDRESS const higher_column_address) const noexcept
+    void SH1107::send_set_lower_column_address_command(SET_LOWER_COLUMN_ADDRESS const address) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(higher_column_address));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(address));
     }
 
-    void SH1107::send_memory_addressing_mode_command(MEMORY_ADDRESSING_MODE const memory_addressing_mode) const noexcept
+    void SH1107::send_set_higher_column_address_command(std::uint8_t const address) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(memory_addressing_mode));
+        this->send_set_higher_column_address_command(SET_HIGHER_COLUMN_ADDRESS{.address = address});
     }
 
-    void SH1107::send_segment_remap_command(SEGMENT_REMAP const segment_remap) const noexcept
+    void SH1107::send_set_higher_column_address_command(SET_HIGHER_COLUMN_ADDRESS const address) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(segment_remap));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(address));
     }
 
-    void SH1107::send_entire_display_on_off_command(ENTIRE_DISPLAY_ON_OFF const entire_display_on_off) const noexcept
+    void SH1107::send_set_memory_addressing_mode_command(bool const mode) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(entire_display_on_off));
+        this->send_set_memory_addressing_mode_command(SET_MEMORY_ADDRESSING_MODE{.mode = mode});
     }
 
-    void SH1107::send_normal_reverse_display_command(NORMAL_REVERSE_DISPLAY const normal_reverse_display) const noexcept
+    void SH1107::send_set_memory_addressing_mode_command(SET_MEMORY_ADDRESSING_MODE const mode) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(normal_reverse_display));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(mode));
     }
 
-    void SH1107::send_display_on_off_command(DISPLAY_ON_OFF const display_on_off) const noexcept
+    void SH1107::send_set_segment_remap_command(bool const remap) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(display_on_off));
+        this->send_set_segment_remap_command(SET_SEGMENT_REMAP{.remap = remap});
     }
 
-    void SH1107::send_page_address_command(PAGE_ADDRESS const page_address) const noexcept
+    void SH1107::send_set_segment_remap_command(SET_SEGMENT_REMAP const remap) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(page_address));
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_SEGMENT_REMAP)>>(remap));
     }
 
-    void SH1107::send_output_scan_direction_command(OUTPUT_SCAN_DIRECTION const output_scan_direction) const noexcept
+    void SH1107::send_set_entire_display_on_off_command(bool const on_off) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(output_scan_direction));
+        this->send_set_entire_display_on_off_command(SET_ENTIRE_DISPLAY_ON_OFF{.on_off = on_off});
     }
 
-    void SH1107::send_read_modify_write_command(READ_MODIFY_WRITE const read_modify_write) const noexcept
+    void SH1107::send_set_entire_display_on_off_command(SET_ENTIRE_DISPLAY_ON_OFF const on_off) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(read_modify_write));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(on_off));
     }
 
-    void SH1107::send_end_command(END const end) const noexcept
+    void SH1107::send_set_normal_reverse_display_command(bool const display) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(end));
+        this->send_set_normal_reverse_display_command(SET_NORMAL_REVERSE_DISPLAY{.display = display});
     }
 
-    void SH1107::send_nop_command(NOP const nop) const noexcept
+    void SH1107::send_set_normal_reverse_display_command(SET_NORMAL_REVERSE_DISPLAY const display) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(nop));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(display));
     }
 
-    void SH1107::send_write_display_data_command(WRITE_DISPLAY_DATA const write_display_data) const noexcept
+    void SH1107::send_set_display_on_off_command(bool const on_off) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(write_display_data));
+        this->send_set_display_on_off_command(SET_DISPLAY_ON_OFF{.on_off = on_off});
     }
 
-    void SH1107::send_read_id_command(READ_ID const read_id) const noexcept
+    void SH1107::send_set_display_on_off_command(SET_DISPLAY_ON_OFF const on_off) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(read_id));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(on_off));
     }
 
-    void SH1107::send_read_display_data_command(READ_DISPLAY_DATA const read_display_data) const noexcept
+    void SH1107::send_set_page_address_command(std::uint8_t const address) const noexcept
     {
-        this->transmit_command(std::bit_cast<std::uint8_t>(read_display_data));
+        this->send_set_page_address_command(SET_PAGE_ADDRESS{.address = address});
     }
 
-    void SH1107::set_contrast_control_register(CONTRAST_CONTROL const contrast_control) const noexcept
+    void SH1107::send_set_page_address_command(SET_PAGE_ADDRESS const address) const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::CONTRAST_CONTROL),
-                         std::bit_cast<std::uint8_t>(contrast_control));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(address));
     }
 
-    void SH1107::set_multiplex_ratio_register(MULTIPLEX_RATIO const multiplex_ratio) const noexcept
+    void SH1107::send_set_output_scan_direction_command(bool const direction) const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::MULTIPLEX_RATIO), std::bit_cast<std::uint8_t>(multiplex_ratio));
+        this->send_set_output_scan_direction_command(SET_OUTPUT_SCAN_DIRECTION{.direction = direction});
     }
 
-    void SH1107::set_display_offset_register(DISPLAY_OFFSET const display_offset) const noexcept
+    void SH1107::send_set_output_scan_direction_command(SET_OUTPUT_SCAN_DIRECTION const direction) const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::DISPLAY_OFFSET), std::bit_cast<std::uint8_t>(display_offset));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(direction));
     }
 
-    void SH1107::set_dc_dc_control_mode_register(DC_DC_CONTROL_MODE const dc_dc_control_mode) const noexcept
+    void SH1107::send_read_modify_write_command() const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::DC_DC_CONTROL_MODE),
-                         std::bit_cast<std::uint8_t>(dc_dc_control_mode));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(READ_MODIFY_WRITE{}));
     }
 
-    void SH1107::set_clock_divide_osc_freq_register(CLOCK_DIVIDE_OSC_FREQ const display_divide_osc_freq) const noexcept
+    void SH1107::send_end_command() const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::CLOCK_DIVIDE_OSC_FREQ),
-                         std::bit_cast<std::uint8_t>(display_divide_osc_freq));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(END{}));
     }
 
-    void SH1107::set_charge_period_register(CHARGE_PERIOD const charge_period) const noexcept
+    void SH1107::send_nop_command() const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::CHARGE_PERIOD), std::bit_cast<std::uint8_t>(charge_period));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(NOP{}));
     }
 
-    void SH1107::set_vcom_deselect_level_register(VCOM_DESELECT_LEVEL const vcom_deselect_level) const noexcept
+    void SH1107::send_read_id_command() const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::VCOM_DESELECT_LEVEL),
-                         std::bit_cast<std::uint8_t>(vcom_deselect_level));
+        this->transmit_command_byte(std::bit_cast<std::uint8_t>(READ_ID{}));
     }
 
-    void SH1107::set_display_start_line_register(DISPLAY_START_LINE const display_start_line) const noexcept
+    void SH1107::send_set_contrast_control_command(std::uint8_t const contrast) const noexcept
     {
-        this->write_byte(std::to_underlying(RegAddress::DISPLAY_START_LINE),
-                         std::bit_cast<std::uint8_t>(display_start_line));
+        this->send_set_contrast_control_command(SET_CONTRAST_CONTROL{.contrast = contrast});
+    }
+
+    void SH1107::send_set_contrast_control_command(SET_CONTRAST_CONTROL const contrast) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_CONTRAST_CONTROL)>>(contrast));
+    }
+
+    void SH1107::send_set_multiplex_ratio_command(std::uint8_t const ratio) const noexcept
+    {
+        this->send_set_multiplex_ratio_command(SET_MULTIPLEX_RATIO{.ratio = ratio});
+    }
+
+    void SH1107::send_set_multiplex_ratio_command(SET_MULTIPLEX_RATIO const ratio) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_MULTIPLEX_RATIO)>>(ratio));
+    }
+
+    void SH1107::send_set_display_offset_command(std::uint8_t const offset) const noexcept
+    {
+        this->send_set_display_offset_command(SET_DISPLAY_OFFSET{.offset = offset});
+    }
+
+    void SH1107::send_set_display_offset_command(SET_DISPLAY_OFFSET const offset) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_DISPLAY_OFFSET)>>(offset));
+    }
+
+    void SH1107::send_set_dc_dc_setting_command(std::uint8_t const setting) const noexcept
+    {
+        this->send_set_dc_dc_setting_command(SET_DC_DC_SETTING{.setting = setting});
+    }
+
+    void SH1107::send_set_dc_dc_setting_command(SET_DC_DC_SETTING const setting) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_DC_DC_SETTING)>>(setting));
+    }
+
+    void SH1107::send_set_display_clock_command(std::uint8_t const osc_freq,
+                                                std::uint8_t const clock_divide) const noexcept
+    {
+        this->send_set_display_clock_command(SET_DISPLAY_CLOCK{.osc_freq = osc_freq, .clock_divide = clock_divide});
+    }
+
+    void SH1107::send_set_display_clock_command(SET_DISPLAY_CLOCK const clock) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_DISPLAY_CLOCK)>>(clock));
+    }
+
+    void SH1107::send_set_charge_period_command(std::uint8_t const discharge,
+                                                std::uint8_t const precharge) const noexcept
+    {
+        this->send_set_charge_period_command(
+            SET_CHARGE_PERIOD{.discharge_period = discharge, .precharge_period = precharge});
+    }
+
+    void SH1107::send_set_charge_period_command(SET_CHARGE_PERIOD const charge_period) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_CHARGE_PERIOD)>>(charge_period));
+    }
+
+    void SH1107::send_set_vcom_deselect_level_command(std::uint8_t const level) const noexcept
+    {
+        this->send_set_vcom_deselect_level_command(SET_VCOM_DESELECT_LEVEL{.level = level});
+    }
+
+    void SH1107::send_set_vcom_deselect_level_command(SET_VCOM_DESELECT_LEVEL const level) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_VCOM_DESELECT_LEVEL)>>(level));
+    }
+
+    void SH1107::send_set_display_start_line_command(std::uint8_t const line) const noexcept
+    {
+        this->send_set_display_start_line_command(SET_DISPLAY_START_LINE{.line = line});
+    }
+
+    void SH1107::send_set_display_start_line_command(SET_DISPLAY_START_LINE const line) const noexcept
+    {
+        this->transmit_command_bytes(std::bit_cast<std::array<std::uint8_t, sizeof(SET_DISPLAY_START_LINE)>>(line));
     }
 
     void SH1107::set_pixel(std::uint8_t x, std::uint8_t y, bool color) noexcept
@@ -374,11 +420,13 @@ namespace SH1107 {
     void SH1107::display_frame_buf()
     {
         for (std::uint8_t page = 0; page < (SCREEN_HEIGHT / 8); page++) {
-            transmit_command(0xB0 | page);
-            transmit_command(0x00);
-            transmit_command(0x10);
+            this->transmit_command_byte(0xB0 | page);
+            this->transmit_command_byte(0x00);
+            this->transmit_command_byte(0x10);
 
-            transmit_data(this->frame_buf_.data() + page * SCREEN_WIDTH, SCREEN_WIDTH);
+            auto bytes = std::array<std::uint8_t, SCREEN_WIDTH>{};
+            std::memcpy(bytes.data(), frame_buf_.data() + page * SCREEN_WIDTH, SCREEN_WIDTH);
+            this->transmit_data_bytes(bytes);
         }
     }
 

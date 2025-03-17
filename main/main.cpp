@@ -24,7 +24,7 @@ namespace {
         while (true) {
             sh1107.draw_string(0, 0, "DUPA");
             sh1107.display_frame_buf();
-            sh1107.transmit_command(0xAF);
+            sh1107.transmit_command_byte(0xAF);
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
 
