@@ -150,7 +150,7 @@ namespace SH1107 {
     void SH1107::transmit_data_bytes(std::array<std::uint8_t, SIZE> const& bytes) const noexcept
     {
         this->select_control_pad(ControlPad::DISPLAY_DATA);
-        this->spi_device_.transmit_bytes(bytes);
+        this->spi_device_.transmit_bytes_dma(bytes);
     }
 
     template <std::size_t SIZE>

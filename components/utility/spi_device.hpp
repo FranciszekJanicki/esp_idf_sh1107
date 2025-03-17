@@ -16,7 +16,10 @@ namespace Utility {
     struct SPIDevice {
     public:
         SPIDevice() noexcept = default;
-        SPIDevice(spi_device_handle_t const spi_device, gpio_num_t const chip_select) noexcept;
+        SPIDevice(spi_device_handle_t const spi_device,
+                  gpio_num_t const chip_select,
+                  std::size_t const rx_dma_buffer_size = 1024UL,
+                  std::size_t const tx_dma_buffer_size = 1024UL) noexcept;
 
         SPIDevice(SPIDevice const& other) = delete;
         SPIDevice(SPIDevice&& other) noexcept = default;
@@ -27,49 +30,33 @@ namespace Utility {
         ~SPIDevice() noexcept = default;
 
         template <std::size_t SIZE>
-        void transmit_dwords(std::array<std::uint32_t, SIZE> const& dwords) const noexcept;
-        void transmit_dword(std::uint32_t const dword) const noexcept;
+        void transmit_bytes_dma(std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
+        void transmit_byte_dma(std::uint8_t const byte) const noexcept;
 
         template <std::size_t SIZE>
-        void transmit_words(std::array<std::uint16_t, SIZE> const& words) const noexcept;
-        void transmit_word(std::uint16_t const word) const noexcept;
+        std::array<std::uint8_t, SIZE> receive_bytes_dma() const noexcept;
+        std::uint8_t receive_byte_dma() const noexcept;
 
         template <std::size_t SIZE>
         void transmit_bytes(std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
-        void transmit_bytes(std::uint8_t const* const bytes, std::size_t const size) const noexcept;
         void transmit_byte(std::uint8_t const byte) const noexcept;
-
-        template <std::size_t SIZE>
-        std::array<std::uint32_t, SIZE> receive_dwords() const noexcept;
-        std::uint32_t receive_dword() const noexcept;
-
-        template <std::size_t SIZE>
-        std::array<std::uint16_t, SIZE> receive_words() const noexcept;
-        std::uint16_t receive_word() const noexcept;
 
         template <std::size_t SIZE>
         std::array<std::uint8_t, SIZE> receive_bytes() const noexcept;
         std::uint8_t receive_byte() const noexcept;
 
         template <std::size_t SIZE>
-        std::array<std::uint32_t, SIZE> read_dwords(std::uint8_t const reg_address) const noexcept;
-        std::uint32_t read_dword(std::uint8_t const reg_address) const noexcept;
+        std::array<std::uint8_t, SIZE> read_bytes_dma(std::uint8_t const reg_address) const noexcept;
+        std::uint8_t read_byte_dma(std::uint8_t const reg_address) const noexcept;
 
         template <std::size_t SIZE>
-        std::array<std::uint16_t, SIZE> read_words(std::uint8_t const reg_address) const noexcept;
-        std::uint16_t read_word(std::uint8_t const reg_address) const noexcept;
+        void write_bytes_dma(std::uint8_t const reg_address,
+                             std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
+        void write_byte_dma(std::uint8_t const reg_address, std::uint8_t const byte) const noexcept;
 
         template <std::size_t SIZE>
         std::array<std::uint8_t, SIZE> read_bytes(std::uint8_t const reg_address) const noexcept;
         std::uint8_t read_byte(std::uint8_t const reg_address) const noexcept;
-
-        template <std::size_t SIZE>
-        void write_dwords(std::uint8_t const reg_address, std::array<std::uint32_t, SIZE> const& dwords) const noexcept;
-        void write_dword(std::uint8_t const reg_address, std::uint32_t const dword) const noexcept;
-
-        template <std::size_t SIZE>
-        void write_words(std::uint8_t const reg_address, std::array<std::uint16_t, SIZE> const& words) const noexcept;
-        void write_word(std::uint8_t const reg_address, std::uint16_t const word) const noexcept;
 
         template <std::size_t SIZE>
         void write_bytes(std::uint8_t const reg_address, std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
@@ -86,125 +73,178 @@ namespace Utility {
 
         bool initialized_{false};
 
+        std::uint8_t* rx_dma_buffer_{nullptr};
+        std::size_t rx_dma_buffer_size_{};
+
+        std::uint8_t* tx_dma_buffer_{nullptr};
+        std::size_t tx_dma_buffer_size_{};
+
         spi_device_handle_t spi_device_{nullptr};
         gpio_num_t chip_select_{};
     };
 
     template <std::size_t SIZE>
-    void SPIDevice::transmit_dwords(std::array<std::uint32_t, SIZE> const& dwords) const noexcept
+    inline void SPIDevice::transmit_bytes_dma(std::array<std::uint8_t, SIZE> const& bytes) const noexcept
     {
-        this->transmit_bytes(Utility::dwords_to_bytes(dwords));
+        if (this->initialized_) {
+            spi_transaction_t transaction{};
+            transaction.length = SIZE * 8;
+            transaction.rxlength = 0;
+            transaction.flags = 0;
+            transaction.tx_buffer = this->tx_dma_buffer_;
+
+            std::memcpy(this->tx_dma_buffer_, bytes.data(), bytes.size());
+
+            spi_transaction_t* result;
+            gpio_set_level(this->chip_select_, 0);
+            spi_device_queue_trans(this->spi_device_, &transaction, TIMEOUT);
+            spi_device_get_trans_result(this->spi_device_, &result, TIMEOUT);
+            gpio_set_level(this->chip_select_, 1);
+        }
     }
 
     template <std::size_t SIZE>
-    void SPIDevice::transmit_words(std::array<std::uint16_t, SIZE> const& words) const noexcept
+    inline std::array<std::uint8_t, SIZE> SPIDevice::receive_bytes_dma() const noexcept
     {
-        this->transmit_bytes(Utility::words_to_bytes(words));
+        std::array<std::uint8_t, SIZE> bytes{};
+
+        if (this->initialized_) {
+            spi_transaction_t transaction{};
+            transaction.length = 0;
+            transaction.rxlength = SIZE * 8;
+            transaction.flags = 0;
+            transaction.rx_buffer = this->rx_dma_buffer_;
+
+            spi_transaction_t* result;
+            gpio_set_level(this->chip_select_, 0);
+            spi_device_queue_trans(this->spi_device_, &transaction, TIMEOUT);
+            spi_device_get_trans_result(this->spi_device_, &result, TIMEOUT);
+            gpio_set_level(this->chip_select_, 1);
+
+            std::memcpy(bytes.data(), transaction.rx_buffer, bytes.size());
+        }
+
+        return bytes;
     }
 
     template <std::size_t SIZE>
     void SPIDevice::transmit_bytes(std::array<std::uint8_t, SIZE> const& bytes) const noexcept
     {
-        std::array<std::uint8_t, SIZE> write{bytes};
         if (this->initialized_) {
             spi_transaction_t transaction{};
             transaction.length = 8 * SIZE;
             transaction.rxlength = 0;
             transaction.flags = SPI_TRANS_USE_TXDATA;
-            std::memcpy(transaction.tx_data, write.data(), SIZE);
-            ESP_ERROR_CHECK(gpio_set_level(this->chip_select_, 0));
+
+            std::memcpy(transaction.tx_data, bytes.data(), bytes.size());
+
+            gpio_set_level(this->chip_select_, 0);
             spi_device_polling_transmit(this->spi_device_, &transaction);
             gpio_set_level(this->chip_select_, 1);
         }
     }
 
     template <std::size_t SIZE>
-    std::array<std::uint32_t, SIZE> SPIDevice::receive_dwords() const noexcept
-    {
-        return Utility::bytes_to_dwords(this->receive_bytes<4 * SIZE>());
-    }
-
-    template <std::size_t SIZE>
-    std::array<std::uint16_t, SIZE> SPIDevice::receive_words() const noexcept
-    {
-        return Utility::bytes_to_words(this->receive_bytes<2 * SIZE>());
-    }
-
-    template <std::size_t SIZE>
     std::array<std::uint8_t, SIZE> SPIDevice::receive_bytes() const noexcept
     {
-        std::array<std::uint8_t, SIZE> read{};
+        std::array<std::uint8_t, SIZE> bytes{};
+
         if (this->initialized_) {
             spi_transaction_t transaction{};
             transaction.length = 0;
             transaction.rxlength = 8 * SIZE;
             transaction.flags = SPI_TRANS_USE_RXDATA;
+
             gpio_set_level(this->chip_select_, 0);
-            ESP_ERROR_CHECK(spi_device_polling_transmit(this->spi_device_, &transaction));
+            spi_device_polling_transmit(this->spi_device_, &transaction);
             gpio_set_level(this->chip_select_, 1);
-            std::memcpy(read.data(), transaction.rx_data, SIZE);
+
+            std::memcpy(bytes.data(), transaction.rx_data, bytes.size());
         }
-        return read;
+
+        return bytes;
     }
 
     template <std::size_t SIZE>
-    std::array<std::uint32_t, SIZE> SPIDevice::read_dwords(std::uint8_t const reg_address) const noexcept
+    inline std::array<std::uint8_t, SIZE> SPIDevice::read_bytes_dma(std::uint8_t const reg_address) const noexcept
     {
-        return Utility::bytes_to_dwords(this->read_bytes<4 * SIZE>(reg_address));
+        std::array<std::uint8_t, SIZE> bytes{};
+
+        if (this->initialized_) {
+            spi_transaction_t transaction{};
+            transaction.length = 0;
+            transaction.rxlength = 8 * SIZE;
+            transaction.flags = 0;
+            transaction.addr = reg_address_to_read_command(reg_address);
+            transaction.rx_buffer = this->rx_dma_buffer_;
+
+            gpio_set_level(this->chip_select_, 0);
+            spi_device_polling_transmit(this->spi_device_, &transaction);
+            gpio_set_level(this->chip_select_, 1);
+
+            std::memcpy(bytes.data(), transaction.rx_buffer, bytes.size());
+        }
+
+        return bytes;
     }
 
     template <std::size_t SIZE>
-    std::array<std::uint16_t, SIZE> SPIDevice::read_words(std::uint8_t const reg_address) const noexcept
+    inline void SPIDevice::write_bytes_dma(std::uint8_t const reg_address,
+                                           std::array<std::uint8_t, SIZE> const& bytes) const noexcept
     {
-        return Utility::bytes_to_words(this->read_bytes<2 * SIZE>(reg_address));
+        if (this->initialized_) {
+            spi_transaction_t transaction{};
+            transaction.length = 8 * SIZE;
+            transaction.rxlength = 0;
+            transaction.flags = 0;
+            transaction.addr = reg_address_to_write_command(reg_address);
+            transaction.tx_buffer = this->tx_dma_buffer_;
+
+            std::memcpy(this->tx_dma_buffer_, bytes.data(), bytes.size());
+
+            gpio_set_level(this->chip_select_, 0);
+            spi_device_polling_transmit(this->spi_device_, &transaction);
+            gpio_set_level(this->chip_select_, 1);
+        }
     }
 
     template <std::size_t SIZE>
     std::array<std::uint8_t, SIZE> SPIDevice::read_bytes(std::uint8_t const reg_address) const noexcept
     {
-        std::array<std::uint8_t, SIZE> read{};
+        std::array<std::uint8_t, SIZE> bytes{};
+
         if (this->initialized_) {
             spi_transaction_t transaction{};
             transaction.length = 0;
             transaction.rxlength = 8 * SIZE;
             transaction.addr = reg_address_to_read_command(reg_address);
             transaction.flags = SPI_TRANS_USE_RXDATA;
+
             gpio_set_level(this->chip_select_, 0);
-            ESP_ERROR_CHECK(spi_device_polling_transmit(this->spi_device_, &transaction));
+            spi_device_polling_transmit(this->spi_device_, &transaction);
             gpio_set_level(this->chip_select_, 1);
-            std::memcpy(read.data(), transaction.rx_data, SIZE);
+
+            std::memcpy(bytes.data(), transaction.rx_data, bytes.size());
         }
-        return read;
-    }
 
-    template <std::size_t SIZE>
-    void SPIDevice::write_dwords(std::uint8_t const reg_address,
-                                 std::array<std::uint32_t, SIZE> const& dwords) const noexcept
-    {
-        this->write_bytes(reg_address, Utility::dwords_to_bytes(dwords));
-    }
-
-    template <std::size_t SIZE>
-    void SPIDevice::write_words(std::uint8_t const reg_address,
-                                std::array<std::uint16_t, SIZE> const& words) const noexcept
-    {
-        this->write_bytes(reg_address, Utility::words_to_bytes(words));
+        return bytes;
     }
 
     template <std::size_t SIZE>
     void SPIDevice::write_bytes(std::uint8_t const reg_address,
                                 std::array<std::uint8_t, SIZE> const& bytes) const noexcept
     {
-        std::array<std::uint8_t, SIZE> write{bytes};
         if (this->initialized_) {
             spi_transaction_t transaction{};
             transaction.length = 8 * SIZE;
             transaction.rxlength = 0;
             transaction.addr = reg_address_to_write_command(reg_address);
             transaction.flags = SPI_TRANS_USE_TXDATA;
-            std::memcpy(transaction.tx_data, write.data(), SIZE);
+
+            std::memcpy(transaction.tx_data, bytes.data(), bytes.size());
+
             gpio_set_level(this->chip_select_, 0);
-            ESP_ERROR_CHECK(spi_device_polling_transmit(this->spi_device_, &transaction));
+            spi_device_polling_transmit(this->spi_device_, &transaction);
             gpio_set_level(this->chip_select_, 1);
         }
     }

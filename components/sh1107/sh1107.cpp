@@ -27,7 +27,7 @@ namespace SH1107 {
     void SH1107::transmit_data_byte(std::uint8_t const byte) const noexcept
     {
         this->select_control_pad(ControlPad::DISPLAY_DATA);
-        this->spi_device_.transmit_byte(byte);
+        this->spi_device_.transmit_byte_dma(byte);
     }
 
     void SH1107::transmit_command_byte(std::uint8_t const byte) const noexcept
