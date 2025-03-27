@@ -4,7 +4,7 @@ IDF := idf.py
 PORT := /dev/ttyUSB0
 ESP_IDF_TARGET ?= esp32s3
 
-PROJECT_NAME ?= devcontainer-esp-idf-sh1107
+PROJECT_NAME ?= devcontainer-esp-idf-clean
 
 PROJECT_DIR := $(shell pwd)
 MAIN_DIR := $(PROJECT_DIR)/main
@@ -14,3 +14,4 @@ REQUIREMENTS_DIR := $(PROJECT_DIR)/requirements
 SCRIPTS_DIR := $(PROJECT_DIR)/scripts
 PROTO_COMPONENT_DIR := $(COMPONENT_DIR)/putrl_proto
 THIRD_PARTY_DIR := ${PROJECT_DIR}/third_party
+UTILITY_DIR := ${COMPONENT_DIR}/utility

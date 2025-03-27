@@ -1,22 +1,18 @@
 #include "sh1107.hpp"
-#include "font5x7.hpp"
 #include "utility.hpp"
 
 namespace SH1107 {
 
-    SH1107::SH1107(SPIDevice&& spi_device, gpio_num_t const control_pin, gpio_num_t const reset_pin) noexcept :
-        control_pin_{control_pin}, reset_pin_{reset_pin}, spi_device_{std::forward<SPIDevice>(spi_device)}
-    {
-        this->initialize();
-    }
-
     SH1107::SH1107(SPIDevice&& spi_device,
-                   Config const& config,
+                   Font&& font,
                    gpio_num_t const control_pin,
                    gpio_num_t const reset_pin) noexcept :
-        control_pin_{control_pin}, reset_pin_{reset_pin}, spi_device_{std::forward<SPIDevice>(spi_device)}
+        control_pin_{control_pin},
+        reset_pin_{reset_pin},
+        spi_device_{std::forward<SPIDevice>(spi_device)},
+        font_{std::forward<Font>(font)}
     {
-        this->initialize(config);
+        this->initialize();
     }
 
     SH1107::~SH1107() noexcept
@@ -44,21 +40,13 @@ namespace SH1107 {
         this->transmit_command_byte(0xD5); // Set Display Clock Divide Ratio
         this->transmit_command_byte(0x80);
         this->transmit_command_byte(0xA8); // Set Multiplex Ratio
-        this->transmit_command_byte(0x3F);
+        this->transmit_command_byte(0x7F);
         this->transmit_command_byte(0xD3); // Display Offset
         this->transmit_command_byte(0x00);
         this->transmit_command_byte(0x40); // Display Start Line
         this->transmit_command_byte(0x8D); // Charge Pump
         this->transmit_command_byte(0x14);
         this->transmit_command_byte(0xAF); // Display ON
-
-        this->initialized_ = true;
-        vTaskDelay(pdMS_TO_TICKS(100UL));
-    }
-
-    void SH1107::initialize(Config const& config) noexcept
-    {
-        this->device_reset();
 
         this->initialized_ = true;
         vTaskDelay(pdMS_TO_TICKS(100UL));
@@ -77,16 +65,6 @@ namespace SH1107 {
         vTaskDelay(pdMS_TO_TICKS(100U));
         gpio_set_level(this->reset_pin_, 1U);
         vTaskDelay(pdMS_TO_TICKS(100U));
-    }
-
-    void SH1107::entire_display_on() const noexcept
-    {
-        this->send_set_entire_display_on_off_command(true);
-    }
-
-    void SH1107::entire_display_off() const noexcept
-    {
-        this->send_set_entire_display_on_off_command(false);
     }
 
     void SH1107::display_on() const noexcept
@@ -315,14 +293,13 @@ namespace SH1107 {
 
     void SH1107::draw_line(std::uint8_t x0, std::uint8_t y0, std::uint8_t x1, std::uint8_t y1, bool color) noexcept
     {
-        int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-        int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
         int err = dx + dy, e2;
 
-        while (true) {
-            set_pixel(x0, y0, color);
-            if (x0 == x1 && y0 == y1)
-                break;
+        while (x0 != x1 && y0 != y1) {
+            this->set_pixel(x0, y0, color);
+
             e2 = 2 * err;
             if (e2 >= dy) {
                 err += dy;
@@ -335,18 +312,35 @@ namespace SH1107 {
         }
     }
 
+    void SH1107::draw_rect(std::uint8_t x, std::uint8_t y, std::uint8_t w, std::uint8_t h, bool color) noexcept
+    {
+        std::uint8_t x_start = x;
+        std::uint8_t x_end = x + w;
+        std::uint8_t y_start = y;
+        std::uint8_t y_end = y + h;
+
+        for (x = x_start; x < x_end; x++) {
+            for (y = y_start; y < y_end; y++) {
+                if (!color && (x > x_start && x < x_end - 1) && (y > y_start && y < y_end - 1)) {
+                    continue;
+                }
+                this->set_pixel(x, y);
+            }
+        }
+    }
+
     void SH1107::draw_circle(std::uint8_t x0, std::uint8_t y0, std::uint8_t r, bool color) noexcept
     {
         int x = r, y = 0, err = 1 - x;
         while (x >= y) {
-            set_pixel(x0 + x, y0 + y, color);
-            set_pixel(x0 + y, y0 + x, color);
-            set_pixel(x0 - y, y0 + x, color);
-            set_pixel(x0 - x, y0 + y, color);
-            set_pixel(x0 - x, y0 - y, color);
-            set_pixel(x0 - y, y0 - x, color);
-            set_pixel(x0 + y, y0 - x, color);
-            set_pixel(x0 + x, y0 - y, color);
+            this->set_pixel(x0 + x, y0 + y, color);
+            this->set_pixel(x0 + y, y0 + x, color);
+            this->set_pixel(x0 - y, y0 + x, color);
+            this->set_pixel(x0 - x, y0 + y, color);
+            this->set_pixel(x0 - x, y0 - y, color);
+            this->set_pixel(x0 - y, y0 - x, color);
+            this->set_pixel(x0 + y, y0 - x, color);
+            this->set_pixel(x0 + x, y0 - y, color);
             y++;
             if (err < 0) {
                 err += 2 * y + 1;
@@ -361,14 +355,20 @@ namespace SH1107 {
                              std::uint8_t y,
                              std::uint8_t w,
                              std::uint8_t h,
-                             std::uint8_t* bitmap,
+                             std::uint8_t const* bitmap,
+                             std::size_t size,
                              bool color) noexcept
     {
         for (std::uint8_t j = 0; j < h; j++) {
             for (std::uint8_t i = 0; i < w; i++) {
-                std::uint8_t byte = bitmap[j * ((w + 7) / 8) + (i / 8)];
+                std::size_t index = j * ((w + 7) / 8) + (i / 8);
+                if (index > size) {
+                    break;
+                }
+
+                std::uint8_t byte = bitmap[index];
                 if (byte & (1 << (7 - (i % 8)))) {
-                    set_pixel(x + i, y + j, color);
+                    this->set_pixel(x + i, y + j, color);
                 }
             }
         }
@@ -379,10 +379,10 @@ namespace SH1107 {
         if (c < 32 || c > 127)
             return;
 
-        for (std::uint8_t i = 0; i < FONT5X7_WIDTH; i++) {
-            std::uint8_t line = font5x7[c - 32][i];
-            for (std::uint8_t j = 0; j < FONT5X7_HEIGHT; j++) {
-                set_pixel(x + i, y + j, line & (1 << j));
+        for (std::uint8_t i = 0; i < this->font_.width; i++) {
+            std::uint8_t line = this->font_.buffer[c - 32][i];
+            for (std::uint8_t j = 0; j < this->font_.height; j++) {
+                this->set_pixel(x + i, y + j, line & (1 << j));
             }
         }
     }
@@ -390,8 +390,8 @@ namespace SH1107 {
     void SH1107::draw_string(std::uint8_t x, std::uint8_t y, std::string const& s) noexcept
     {
         for (char c : s) {
-            draw_char(x, y, c);
-            x += FONT5X7_WIDTH + 1;
+            this->draw_char(x, y, c);
+            x += this->font_.width + 1;
             if (x >= SCREEN_WIDTH)
                 break;
         }
@@ -432,7 +432,7 @@ namespace SH1107 {
 
     void SH1107::clear_frame_buf() noexcept
     {
-        std::fill(frame_buf_.begin(), frame_buf_.end(), 0);
+        std::memset(this->frame_buf_.data(), 0, this->frame_buf_.size());
     }
 
 }; // namespace SH1107

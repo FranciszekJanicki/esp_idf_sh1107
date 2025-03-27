@@ -2,7 +2,9 @@
 #define SH1107_CONFIG_HPP
 
 #include "sh1107_commands.hpp"
+#include "spi_device.hpp"
 #include <cstdint>
+#include <vector>
 
 #define PACKED __attribute__((__packed__))
 
@@ -25,10 +27,19 @@ namespace SH1107 {
 
     struct Config {};
 
+    using SPIDevice = Utility::SPIDevice;
+
+    struct Font {
+        std::vector<std::vector<std::uint8_t>> buffer{};
+        std::uint8_t width{};
+        std::uint8_t height{};
+    };
+
     auto constexpr SCREEN_WIDTH = 128U;
-    auto constexpr BYTE_HEIGHT = 8U;
+    auto constexpr BYTE_HEIGHT = 5U;
+    auto constexpr BYTE_WIDTH = 7U;
     auto constexpr SCREEN_HEIGHT = 128U;
-    auto constexpr FRAME_BUF_SIZE = SCREEN_WIDTH * (SCREEN_HEIGHT / BYTE_HEIGHT);
+    auto constexpr FRAME_BUF_SIZE = SCREEN_WIDTH * (SCREEN_HEIGHT / 8);
 
 }; // namespace SH1107
 

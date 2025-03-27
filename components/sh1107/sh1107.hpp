@@ -14,11 +14,7 @@ namespace SH1107 {
 
         SH1107() noexcept = default;
 
-        SH1107(SPIDevice&& spi_device, gpio_num_t const control_pin, gpio_num_t const reset_pin) noexcept;
-        SH1107(SPIDevice&& spi_device,
-               Config const& config,
-               gpio_num_t const control_pin,
-               gpio_num_t const reset_pin) noexcept;
+        SH1107(SPIDevice&& spi_device, Font&& font, gpio_num_t const control_pin, gpio_num_t const reset_pin) noexcept;
 
         SH1107(SH1107 const& other) = delete;
         SH1107(SH1107&& other) noexcept = default;
@@ -36,13 +32,16 @@ namespace SH1107 {
 
         void draw_line(std::uint8_t x0, std::uint8_t y0, std::uint8_t x1, std::uint8_t y1, bool color = true) noexcept;
 
+        void draw_rect(std::uint8_t x, std::uint8_t y, std::uint8_t w, std::uint8_t h, bool color = true) noexcept;
+
         void draw_circle(std::uint8_t x0, std::uint8_t y0, std::uint8_t r, bool color = true) noexcept;
 
         void draw_bitmap(std::uint8_t x,
                          std::uint8_t y,
                          std::uint8_t w,
                          std::uint8_t h,
-                         std::uint8_t* const bitmap,
+                         std::uint8_t const* bitmap,
+                         std::size_t size,
                          bool color = true) noexcept;
 
         void draw_char(std::uint8_t x, std::uint8_t y, char c) noexcept;
@@ -62,14 +61,9 @@ namespace SH1107 {
         void transmit_command_bytes(std::array<std::uint8_t, SIZE> const& bytes) const noexcept;
 
         void initialize() noexcept;
-        void initialize(Config const& config) noexcept;
-
         void deinitialize() noexcept;
 
         void device_reset() const noexcept;
-
-        void entire_display_on() const noexcept;
-        void entire_display_off() const noexcept;
 
         void display_on() const noexcept;
         void display_off() const noexcept;
@@ -142,6 +136,8 @@ namespace SH1107 {
         gpio_num_t reset_pin_{};
 
         SPIDevice spi_device_{};
+
+        Font font_{};
 
         std::array<std::uint8_t, FRAME_BUF_SIZE> frame_buf_{};
     };

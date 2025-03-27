@@ -1,0 +1,3 @@
+[submodule "/home/franek/Documents/esp-idf/esp-idf-sh1107/components/utility"]
+	path = /home/franek/Documents/esp-idf/esp-idf-sh1107/components/utility
+	url = https://github.com/franciszekjanicki/esp32-utility.git

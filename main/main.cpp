@@ -1,5 +1,7 @@
+#include "../font/font5x7.hpp"
 #include "gpio.hpp"
 #include "sh1107.hpp"
+#include "sh1107_config.hpp"
 #include "spi.hpp"
 #include "spi_device.hpp"
 #include "usart.hpp"
@@ -12,12 +14,11 @@ namespace {
         initialize_gpio();
         initialize_usart();
 
-        using namespace SH1107;
-        using namespace Utility;
+        auto font = SH1107::Font{.buffer = Font::FONT5X7, .width = Font::FONT5X7_WIDTH, .height = Font::FONT5X7_HEIGHT};
 
-        auto spi_device = SPIDevice{sh1107_spi_device, SH1107_CS};
+        auto spi_device = Utility::SPIDevice{sh1107_spi_device, SH1107_CS, FRAME_BUF_SIZE};
 
-        auto sh1107 = SH1107::SH1107{std::move(spi_device), SH1107_DC, SH1107_RST};
+        auto sh1107 = SH1107::SH1107{std::move(spi_device), std::move(font), SH1107_DC, SH1107_RST};
 
         sh1107.clear_frame_buf();
 
