@@ -5,13 +5,14 @@
 #include "sh1107_commands.hpp"
 #include "sh1107_config.hpp"
 #include "spi_device.hpp"
+#include <cstdint>
+#include <cstring>
+#include <string>
 
 namespace SH1107 {
 
     struct SH1107 {
     public:
-        using SPIDevice = Utility::SPIDevice;
-
         SH1107() noexcept = default;
 
         SH1107(SPIDevice&& spi_device, Font&& font, gpio_num_t const control_pin, gpio_num_t const reset_pin) noexcept;

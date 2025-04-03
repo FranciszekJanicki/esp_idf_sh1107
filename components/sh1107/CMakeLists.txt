@@ -5,5 +5,5 @@ idf_component_register(
         "."
     REQUIRES 
         driver
-        utility
+        esp32_utility
 )

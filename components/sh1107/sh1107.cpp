@@ -1,5 +1,4 @@
 #include "sh1107.hpp"
-#include "utility.hpp"
 
 namespace SH1107 {
 
