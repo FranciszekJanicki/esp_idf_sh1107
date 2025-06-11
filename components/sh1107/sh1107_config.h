@@ -2,6 +2,9 @@
 #define SH1107_SH1107_CONFIG_H
 
 #include "sh1107_commands.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #define SH1107_SCREEN_WIDTH 128U
 #define SH1107_BYTE_HEIGHT 5U
@@ -17,7 +20,7 @@ typedef enum {
 
 typedef enum {
     SH1107_CONTROL_SELECT_DISPLAY = 0b01,
-    Sh1107_CONTROL_SELECT_COMMAND = 0b00,
+    SH1107_CONTROL_SELECT_COMMAND = 0b00,
 } sh1107_control_select_t;
 
 typedef struct {
@@ -35,14 +38,14 @@ typedef struct {
 
 typedef struct {
     void* gpio_user;
-    void (*gpio_init)(void*);
-    void (*gpio_deinit)(void*);
-    void (*gpio_write)(void*, uint32_t, bool);
+    sh1107_err_t (*gpio_init)(void*);
+    sh1107_err_t (*gpio_deinit)(void*);
+    sh1107_err_t (*gpio_write)(void*, uint32_t, bool);
 
     void* bus_user;
-    void (*bus_init)(void*);
-    void (*bus_deinit)(void*);
-    void (*bus_transmit)(void*, uint8_t const*, size_t);
+    sh1107_err_t (*bus_init)(void*);
+    sh1107_err_t (*bus_deinit)(void*);
+    sh1107_err_t (*bus_transmit)(void*, uint8_t const*, size_t);
 } sh1107_interface_t;
 
 #endif // SH1107_SH1107_CONFIG_H

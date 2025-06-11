@@ -6,15 +6,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
-inline bool
-sh1107_bitmap_get_pixel(uint8_t width, uint8_t height, uint8_t (*bitmap)[width * height / 8], uint8_t x, uint8_t y)
+inline bool sh1107_bitmap_get_pixel(uint8_t width,
+                                    uint8_t height,
+                                    uint8_t (*bitmap)[width * height / 8],
+                                    uint8_t x,
+                                    uint8_t y)
 {
     assert(bitmap);
 
     uint8_t byte_num = (y * width + x) / 8U;
-    uint8_t bit_num = 7U - (x % 8U);
+    uint8_t bit_mask = 1U << (7U - (x % 8U));
 
-    bool pixel = (*bitmap[byte_num] & (1U << bit_num)) ? true : false;
+    bool pixel = (*bitmap[byte_num] & bit_mask) ? true : false;
 
     return pixel;
 }
@@ -29,9 +32,9 @@ inline void sh1107_bitmap_set_pixel(uint8_t width,
     assert(bitmap);
 
     uint8_t byte_num = (y * width + x) / 8U;
-    uint8_t bit_num = 7U - (x % 8U);
+    uint8_t bit_mask = 1U << (7U - (x % 8U));
 
-    *bitmap[byte_num] = pixel ? (*bitmap[byte_num] | (1U << bit_num)) : (*bitmap[byte_num] & ~(1U << bit_num));
+    *bitmap[byte_num] = pixel ? (*bitmap[byte_num] | bit_mask) : (*bitmap[byte_num] & ~bit_mask);
 }
 
 inline void sh1107_bitmap_resize(uint8_t old_width,
