@@ -1,9 +1,8 @@
 idf_component_register(
     SRCS
-        "sh1107.cpp"
+        "sh1107.c"
     INCLUDE_DIRS
         "."
     REQUIRES 
         driver
-        esp32_utility
 )

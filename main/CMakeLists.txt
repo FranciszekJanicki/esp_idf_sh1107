@@ -3,5 +3,4 @@ idf_component_register(
         "main.cpp"
     REQUIRES
         sh1107
-        peripherals
 )

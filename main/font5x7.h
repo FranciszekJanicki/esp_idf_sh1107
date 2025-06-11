@@ -1,16 +1,14 @@
-#ifndef FONT5X7_HPP
-#define FONT5X7_HPP
+#ifndef FONT5X7_H
+#define FONT5X7_H
 
-#include <cstdint>
-#include <vector>
+#include <stdint.h>
 
-auto constexpr FONT5X7_CHAR_CODE_OFFSET = 32UL;
-auto constexpr FONT5X7_WIDTH = 5UL;
-auto constexpr FONT5X7_HEIGHT = 7UL;
-auto constexpr FONT5X7_LINE_HEIGHT = (FONT5X7_HEIGHT + 1UL);
-auto constexpr FONT5X7_CHAR_WIDTH = (FONT5X7_WIDTH + 1UL);
+#define FONT5X7_WIDTH 5UL
+#define FONT5X7_HEIGHT 7UL
+#define FONT5X7_LINE_HEIGHT (FONT5X7_HEIGHT + 1UL)
+#define FONT5X7_CHAR_WIDTH (FONT5X7_WIDTH + 1UL)
 
-inline std::vector<std::vector<std::uint8_t>> FONT5X7{
+inline uint8_t font5x7[][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // (space)
     {0x00, 0x00, 0x5F, 0x00, 0x00}, // !
     {0x00, 0x07, 0x00, 0x07, 0x00}, // "
@@ -107,7 +105,6 @@ inline std::vector<std::vector<std::uint8_t>> FONT5X7{
     {0x00, 0x41, 0x36, 0x08, 0x00}, // }
     {0x08, 0x08, 0x2A, 0x1C, 0x08}, // ->
     {0x08, 0x1C, 0x2A, 0x08, 0x08}  // <-
-
 };
 
-#endif // FONT5X7_HPP
+#endif // FONT5X7_H
